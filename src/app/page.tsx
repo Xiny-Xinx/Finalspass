@@ -378,6 +378,17 @@ export default function Page() {
     setMenuOpen(false);
   }, []);
 
+  // 打开客服时加载历史消息和管理员回复
+  useEffect(() => {
+    if (!supportOpen) return;
+    fetch("/api/user/support/conv")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.messages) setSupportChat(data.messages);
+      })
+      .catch(() => {});
+  }, [supportOpen]);
+
   async function handleSupportSend(e: React.FormEvent) {
     e.preventDefault();
     if (!supportMsg.trim() || supportLoading) return;
@@ -392,7 +403,16 @@ export default function Page() {
         body: JSON.stringify({ question: q }),
       });
       const data = await res.json();
-      setSupportChat((prev) => [...prev, { role: "assistant", content: data.reply || "抱歉，暂时无法回复。" }]);
+      if (data.unread) {
+        // 有管理员新回复，重新拉取完整对话
+        const r2 = await fetch("/api/user/support/conv");
+        const d2 = await r2.json();
+        setSupportChat(d2.messages || []);
+      } else if (data.transfer) {
+        setSupportChat((prev) => [...prev, { role: "assistant", content: "已为您转接人工客服，请稍候。您的问题已提交，管理员会尽快回复。" }]);
+      } else {
+        setSupportChat((prev) => [...prev, { role: "assistant", content: data.reply || "抱歉，暂时无法回复。" }]);
+      }
     } catch {
       setSupportChat((prev) => [...prev, { role: "assistant", content: "网络错误，请稍后重试。" }]);
     } finally {
@@ -1271,7 +1291,19 @@ export default function Page() {
                     条款
                   </a>
                   <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
-                  <button
+                  {isLoggedIn && (
+                  <a
+                    href="/admin/messages"
+                    onClick={() => setMenuOpen(false)}
+                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    工单
+                  </a>
+                )}
+                {isLoggedIn && <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>}
+                <button
                     onClick={() => { setMenuOpen(false); setSupportOpen(true); }}
                     style={{
                       background: "none",
