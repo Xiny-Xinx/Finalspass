@@ -100,9 +100,9 @@ export async function getOrder(outTradeNo: string): Promise<Order | null> {
   const redis = await getRedis();
   if (!redis) return null;
 
-  const raw = await redis.get<string>(`order:${outTradeNo}`);
+  const raw = await redis.get<any>(`order:${outTradeNo}`);
   if (!raw) return null;
-  return JSON.parse(raw) as Order;
+  return (typeof raw === "string" ? JSON.parse(raw) : raw) as Order;
 }
 
 /**
@@ -115,10 +115,10 @@ export async function markOrderSuccess(
   const redis = await getRedis();
   if (!redis) return null;
 
-  const raw = await redis.get<string>(`order:${outTradeNo}`);
+  const raw = await redis.get<any>(`order:${outTradeNo}`);
   if (!raw) return null;
 
-  const order = JSON.parse(raw) as Order;
+  const order = (typeof raw === "string" ? JSON.parse(raw) : raw) as Order;
   if (order.status !== "pending") return order; // 已处理，防重复
 
   order.status = "success";
@@ -136,10 +136,10 @@ export async function markOrderFailed(outTradeNo: string): Promise<void> {
   const redis = await getRedis();
   if (!redis) return;
 
-  const raw = await redis.get<string>(`order:${outTradeNo}`);
+  const raw = await redis.get<any>(`order:${outTradeNo}`);
   if (!raw) return;
 
-  const order = JSON.parse(raw) as Order;
+  const order = (typeof raw === "string" ? JSON.parse(raw) : raw) as Order;
   order.status = "failed";
   await redis.set(`order:${outTradeNo}`, JSON.stringify(order));
 }
@@ -159,10 +159,10 @@ export async function getUserOrders(
 
   if (recent.length === 0) return [];
 
-  const raws = await redis.mget<string[]>(...recent.map((id) => `order:${id}`));
+  const raws = await redis.mget<any[]>(...recent.map((id) => `order:${id}`));
   return raws
-    .filter((r): r is string => r !== null)
-    .map((r) => JSON.parse(r) as Order)
+    .filter((r): r is NonNullable<any> => r !== null)
+    .map((r) => (typeof r === "string" ? JSON.parse(r) : r) as Order)
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
