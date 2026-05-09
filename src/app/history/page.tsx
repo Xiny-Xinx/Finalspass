@@ -82,8 +82,8 @@ export default function HistoryPage() {
       {/* Header */}
       <header
         style={{
-          padding: "14px 24px",
-          borderBottom: "2px solid var(--ink)",
+          padding: "12px 24px",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           gap: 12,
@@ -135,7 +135,7 @@ export default function HistoryPage() {
           role="tablist"
           style={{
             display: "flex",
-            borderBottom: "2px solid var(--ink)",
+            borderBottom: "1px solid var(--border)",
             marginBottom: 24,
           }}
         >
@@ -258,8 +258,8 @@ export default function HistoryPage() {
                         onClick={() => handleDelete(s.id)}
                         style={{
                           background: "none",
-                          border: "1.5px solid var(--accent)",
-                          color: "var(--accent)",
+                          border: "1.5px solid var(--danger)",
+                          color: "var(--danger)",
                           padding: "6px 14px",
                           borderRadius: "var(--radius-sm)",
                           fontSize: "0.72rem",
@@ -292,7 +292,7 @@ export default function HistoryPage() {
                         type="button"
                         onClick={handleClearAll}
                         style={{
-                          background: "var(--accent)",
+                          background: "var(--danger)",
                           color: "white",
                           border: "none",
                           padding: "6px 16px",

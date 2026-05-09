@@ -124,8 +124,8 @@ export default function RegisterPage() {
       {error && (
         <p
           style={{
-            color: "var(--accent)",
-            background: "rgba(255,0,0,0.06)",
+            color: "var(--danger)",
+            background: "var(--danger-glow)",
             padding: "8px 12px",
             borderRadius: 8,
             fontSize: "0.85rem",

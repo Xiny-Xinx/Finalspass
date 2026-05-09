@@ -336,11 +336,19 @@ export default function Page() {
         color: "var(--ink)",
       }}
     >
+      {/* 顶部蓝色装饰条 */}
+      <div
+        style={{
+          height: 3,
+          background: "linear-gradient(90deg, var(--accent), var(--accent-dim))",
+        }}
+      />
+
       {/* ── 顶栏 ── */}
       <header
         style={{
-          padding: "14px 24px",
-          borderBottom: "2px solid var(--ink)",
+          padding: "12px 24px",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           gap: 12,
@@ -355,10 +363,11 @@ export default function Page() {
         <h1
           style={{
             fontFamily: "'Noto Serif SC', Georgia, serif",
-            fontSize: "1.3rem",
+            fontSize: "1.25rem",
             fontWeight: 700,
             letterSpacing: "0.05em",
             whiteSpace: "nowrap",
+            color: "var(--accent)",
           }}
         >
           FinalsPass
@@ -536,9 +545,9 @@ export default function Page() {
             style={{
               marginBottom: 20,
               padding: "12px 16px",
-              border: "1.5px solid var(--accent)",
-              background: "color-mix(in srgb, var(--accent) 8%, var(--paper))",
-              color: "var(--accent)",
+              border: "1.5px solid var(--danger)",
+              background: "var(--danger-glow)",
+              color: "var(--danger)",
               borderRadius: 6,
               fontSize: "0.85rem",
               display: "flex",
@@ -556,7 +565,7 @@ export default function Page() {
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                color: "var(--accent)",
+                color: "var(--danger)",
                 fontSize: "1rem",
               }}
             >
@@ -623,7 +632,7 @@ export default function Page() {
               role="tablist"
               style={{
                 display: "flex",
-                borderBottom: "2px solid var(--ink)",
+                borderBottom: "1px solid var(--border)",
                 marginBottom: 26,
               }}
             >

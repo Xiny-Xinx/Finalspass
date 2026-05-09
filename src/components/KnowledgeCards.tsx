@@ -85,7 +85,7 @@ export default function KnowledgeCards({
               color: "var(--ink)",
               transition: "border-color .2s",
             }}
-            onFocus={(e) => (e.target.style.borderColor = "var(--ink)")}
+            onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
             onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
           />
           {query && (

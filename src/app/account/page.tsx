@@ -250,8 +250,8 @@ export default function AccountPage() {
               fontSize: "0.85rem",
               padding: "8px 12px",
               borderRadius: 8,
-              background: message.includes("成功") ? "rgba(0,200,80,0.1)" : "rgba(255,0,0,0.06)",
-              color: message.includes("成功") ? "var(--success, #00b84d)" : "var(--accent)",
+              background: message.includes("成功") ? "rgba(0,200,80,0.1)" : "var(--danger-glow)",
+              color: message.includes("成功") ? "var(--success, #00b84d)" : "var(--danger)",
               margin: "0 0 16px",
             }}
           >

@@ -219,9 +219,9 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
           style={{
             marginBottom: 20,
             padding: "10px 14px",
-            border: "1.5px solid var(--accent)",
-            background: "color-mix(in srgb, var(--accent) 8%, var(--paper))",
-            color: "var(--accent)",
+            border: "1.5px solid var(--danger)",
+            background: "var(--danger-glow)",
+            color: "var(--danger)",
             borderRadius: "var(--radius-md)",
             fontSize: "0.82rem",
             animation: "fadeUp .25s ease",
@@ -295,21 +295,21 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
               : correctOpt
               ? "color-mix(in srgb, var(--success) 12%, var(--paper))"
               : chosen
-              ? "color-mix(in srgb, var(--accent) 12%, var(--paper))"
+              ? "var(--danger-glow)"
               : "var(--paper)";
             const bc = !isAnswered
               ? "var(--border)"
               : correctOpt
               ? "var(--success)"
               : chosen
-              ? "var(--accent)"
+              ? "var(--danger)"
               : "var(--border)";
             const fc = !isAnswered
               ? "var(--ink)"
               : correctOpt
               ? "var(--success)"
               : chosen
-              ? "var(--accent)"
+              ? "var(--danger)"
               : "var(--ink)";
             return (
               <button

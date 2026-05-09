@@ -144,9 +144,9 @@ export default function UploadZone({ onFile }: UploadZoneProps) {
           style={{
             marginTop: 14,
             padding: "10px 14px",
-            border: "1.5px solid var(--accent)",
-            background: "color-mix(in srgb, var(--accent) 8%, var(--paper))",
-            color: "var(--accent)",
+            border: "1.5px solid var(--danger)",
+            background: "var(--danger-glow)",
+            color: "var(--danger)",
             borderRadius: "var(--radius-md)",
             fontSize: "0.82rem",
             textAlign: "center",

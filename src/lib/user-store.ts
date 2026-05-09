@@ -97,6 +97,7 @@ export async function createUser(
   const multi = redis.multi();
   multi.set(`user:${id}`, JSON.stringify(user));
   multi.set(`user:email:${email}`, id);
+  multi.set(`user:${id}:balance`, 0); // 初始化原子余额 key
   const results = await multi.exec();
 
   // 检查是否成功
@@ -124,7 +125,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   return JSON.parse(raw) as User;
 }
 
-/** 根据 ID 查找用户 */
+/** 根据 ID 查找用户（自动同步原子余额 key） */
 export async function getUserById(id: string): Promise<User | null> {
   const redis = await getRedis();
   if (!redis) return null;
@@ -132,7 +133,20 @@ export async function getUserById(id: string): Promise<User | null> {
   const raw = await redis.get<string>(`user:${id}`);
   if (!raw) return null;
 
-  return JSON.parse(raw) as User;
+  const user = JSON.parse(raw) as User;
+
+  // 从原子余额 key 同步最新余额
+  try {
+    const balanceKey = `user:${id}:balance`;
+    const atomicBalance = await redis.get<number>(balanceKey);
+    if (atomicBalance !== null && atomicBalance !== undefined) {
+      user.balance = atomicBalance;
+    }
+  } catch {
+    // 原子 key 不存在时使用 JSON 中的余额
+  }
+
+  return user;
 }
 
 /** 验证登录 */
@@ -179,34 +193,77 @@ async function saveUser(user: User): Promise<boolean> {
   return r === "OK";
 }
 
-/** 增加用户 token 余额 */
+/** 增加用户 token 余额（原子操作） */
 export async function addUserBalance(
   userId: string,
   tokens: number
 ): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
-  const user = await getUserById(userId);
-  if (!user) return { ok: false, error: "用户不存在" };
+  const redis = await getRedis();
+  if (!redis) return { ok: false, error: "Redis 未配置" };
 
-  user.balance += tokens;
-  user.totalPurchased += tokens;
-  const ok = await saveUser(user);
-  if (!ok) return { ok: false, error: "保存失败" };
+  // 使用独立 balance key 原子累加
+  const balanceKey = `user:${userId}:balance`;
+  try {
+    // 先确保 key 存在（初始化新用户）
+    const exists = await redis.exists(balanceKey);
+    if (!exists) {
+      // 从 user JSON 中读取当前余额
+      const raw = await redis.get<string>(`user:${userId}`);
+      if (!raw) return { ok: false, error: "用户不存在" };
+      const user = JSON.parse(raw) as User;
+      await redis.set(balanceKey, user.balance);
+    }
 
-  return { ok: true, balance: user.balance };
+    const newBalance = await redis.incrby(balanceKey, tokens);
+    // 同时更新 JSON 中的 balance 和 totalPurchased 保持一致性
+    const raw = await redis.get<string>(`user:${userId}`);
+    if (raw) {
+      const user = JSON.parse(raw) as User;
+      user.balance = newBalance;
+      user.totalPurchased += tokens;
+      await redis.set(`user:${userId}`, JSON.stringify(user));
+    }
+
+    return { ok: true, balance: newBalance };
+  } catch {
+    return { ok: false, error: "操作失败" };
+  }
 }
 
-/** 扣除用户 token 余额（用于 AI 调用消耗） */
+/** 扣除用户 token 余额（原子操作，防止并发超扣） */
 export async function deductUserBalance(
   userId: string,
   tokens: number
 ): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
-  const user = await getUserById(userId);
-  if (!user) return { ok: false, error: "用户不存在" };
-  if (user.balance < tokens) return { ok: false, error: "余额不足" };
+  const redis = await getRedis();
+  if (!redis) return { ok: false, error: "Redis 未配置" };
+  if (tokens <= 0) {
+    // 查询当前余额返回
+    const balanceKey = `user:${userId}:balance`;
+    const balance = (await redis.get<number>(balanceKey)) ?? 0;
+    return { ok: true, balance };
+  }
 
-  user.balance -= tokens;
-  const ok = await saveUser(user);
-  if (!ok) return { ok: false, error: "保存失败" };
+  const balanceKey = `user:${userId}:balance`;
+  try {
+    // 原子减扣，INCRBY 返回新值
+    const newBalance = await redis.incrby(balanceKey, -tokens);
+    if (newBalance < 0) {
+      // 余额不足，回滚
+      await redis.incrby(balanceKey, tokens);
+      return { ok: false, error: "余额不足" };
+    }
 
-  return { ok: true, balance: user.balance };
+    // 同步更新 user JSON
+    const raw = await redis.get<string>(`user:${userId}`);
+    if (raw) {
+      const user = JSON.parse(raw) as User;
+      user.balance = newBalance;
+      await redis.set(`user:${userId}`, JSON.stringify(user));
+    }
+
+    return { ok: true, balance: newBalance };
+  } catch {
+    return { ok: false, error: "操作失败" };
+  }
 }

@@ -117,7 +117,7 @@ export default function DetailPanel({
         tabIndex={-1}
         style={{
           background: "var(--paper)",
-          borderTop: "2px solid var(--ink)",
+          borderTop: "3px solid var(--accent)",
           borderRadius: "12px 12px 0 0",
           padding: "28px 32px 40px",
           width: "100%",

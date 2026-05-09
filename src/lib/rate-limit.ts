@@ -28,9 +28,9 @@ function getDateKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Token 窗口过期时间(秒) = 配置的小时数 */
+/** Token 过期时间(秒) = 24 小时（随窗口配置） */
 function windowTTL(): number {
-  return QUOTA_WINDOW_HOURS * 3600;
+  return Math.max(QUOTA_WINDOW_HOURS, 1) * 3600;
 }
 
 export interface QuotaInfo {
@@ -50,18 +50,30 @@ export function getClientIP(request: Request): string {
   return "127.0.0.1";
 }
 
-/** 检查是否超出 Token 预算，超限则抛 429 */
-export async function checkTokenBudget(ip: string): Promise<void> {
+/**
+ * 检查是否超出 Token 预算，超限则抛 429
+ * @param minRemaining - 要求至少剩余多少 token（预检用），默认 0
+ */
+export async function checkTokenBudget(ip: string, minRemaining: number = 0): Promise<void> {
   const redis = await getRedis();
   if (!redis) return; // Redis 未配置 → 无限制
 
   const key = `tokens:${ip}:${getDateKey()}`;
   try {
     const used = (await redis.get<number>(key)) ?? 0;
-    if (used >= DAILY_TOKEN_LIMIT) {
+    const remaining = DAILY_TOKEN_LIMIT - used;
+    if (remaining <= 0) {
       throw Object.assign(
         new Error(
-          `今日 API Token 用量已达上限（${DAILY_TOKEN_LIMIT.toLocaleString()}），${getDateKey()} 重置`
+          `今日免费额度已用完（${DAILY_TOKEN_LIMIT.toLocaleString()}），请登录后使用或明日再试`
+        ),
+        { statusCode: 429 }
+      );
+    }
+    if (remaining < minRemaining) {
+      throw Object.assign(
+        new Error(
+          `免费额度不足（剩余 ${remaining.toLocaleString()}，至少需要 ${minRemaining.toLocaleString()}），请登录后使用`
         ),
         { statusCode: 429 }
       );
