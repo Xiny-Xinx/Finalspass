@@ -5,7 +5,7 @@
  * 当 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 未配置时自动降级为无限制。
  */
 
-import { DAILY_TOKEN_LIMIT } from "./constants";
+import { DAILY_TOKEN_LIMIT, QUOTA_WINDOW_HOURS } from "./constants";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis(): Promise<typeof redisClient> {
@@ -28,11 +28,9 @@ function getDateKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** 到当日 23:59:59 的秒数 */
-function secondsUntilEndOfDay(): number {
-  const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  return Math.max(1, Math.floor((end.getTime() - now.getTime()) / 1000));
+/** Token 窗口过期时间(秒) = 配置的小时数 */
+function windowTTL(): number {
+  return QUOTA_WINDOW_HOURS * 3600;
 }
 
 export interface QuotaInfo {
@@ -84,13 +82,28 @@ export async function recordTokens(ip: string, tokens: number): Promise<void> {
   try {
     const ttl = await redis.ttl(key);
     if (ttl === -2) {
-      // key 不存在 → 新建并设过期（到当日午夜）
-      await redis.set(key, tokens, { ex: secondsUntilEndOfDay() });
+      // key 不存在 → 新建并设过期（QUOTA_WINDOW_HOURS 小时后自动重置）
+      await redis.set(key, tokens, { ex: windowTTL() });
     } else {
       await redis.incrby(key, tokens);
     }
   } catch (err) {
     console.error("[rate-limit] recordTokens error:", err);
+  }
+}
+
+/** 手动重置当前 IP 的配额（删除 Redis key） */
+export async function resetQuota(ip: string): Promise<boolean> {
+  const redis = await getRedis();
+  if (!redis) return false;
+
+  const key = `tokens:${ip}:${getDateKey()}`;
+  try {
+    await redis.del(key);
+    return true;
+  } catch (err) {
+    console.error("[rate-limit] resetQuota error:", err);
+    return false;
   }
 }
 

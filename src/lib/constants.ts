@@ -16,8 +16,11 @@ export const MAX_DETAIL_CONTEXT_CHARS = 3000;
 /** 多轮对话保留的历史消息条数(单数表示成对) */
 export const MAX_CHAT_HISTORY = 10;
 
-/** 每日 API Token 限额(免费用户) */
-export const DAILY_TOKEN_LIMIT = 100000;
+/** 每日 API Token 限额(免费用户)。可通过环境变量 QUOTA_TOKEN_LIMIT 覆盖 */
+export const DAILY_TOKEN_LIMIT = Number(process.env.QUOTA_TOKEN_LIMIT) || 100000;
+
+/** Token 重置窗口(小时)。默认 6 小时，可通过环境变量 QUOTA_WINDOW_HOURS 覆盖 */
+export const QUOTA_WINDOW_HOURS = Number(process.env.QUOTA_WINDOW_HOURS) || 6;
 
 /** localStorage 键 */
 export const STORAGE_KEY = "finalspass:session:v1";
