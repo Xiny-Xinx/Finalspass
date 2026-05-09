@@ -50,6 +50,7 @@ export default function AccountPage() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [pwChanging, setPwChanging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -99,8 +100,12 @@ export default function AccountPage() {
     router.push("/");
   }
 
-  async function handleCancel() {
-    if (!confirm("取消后将停止自动续费，当前套餐权益可继续使用至到期日。确定取消？")) return;
+  function handleCancelClick() {
+    setShowCancelConfirm(true);
+  }
+
+  async function handleCancelConfirm() {
+    setShowCancelConfirm(false);
     setCancelling(true);
     setMessage(null);
     try {
@@ -266,7 +271,7 @@ export default function AccountPage() {
           )}
           {currentTier !== "free" && (
             <button
-              onClick={handleCancel}
+              onClick={handleCancelClick}
               disabled={cancelling}
               style={{
                 marginLeft: "auto",
@@ -498,6 +503,98 @@ export default function AccountPage() {
           </button>
         </div>
       </form>
+
+      {/* ── 取消订阅二次确认弹窗 ── */}
+      {showCancelConfirm && (
+        <div
+          onClick={() => setShowCancelConfirm(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 500,
+            background: "var(--overlay)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "fadeIn .12s ease",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--paper)",
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 380,
+              width: "calc(100% - 32px)",
+              boxShadow: "0 16px 48px rgba(0,0,0,.2)",
+              animation: "fadeUp .2s ease",
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "var(--danger-glow)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.3rem",
+                marginBottom: 16,
+                color: "var(--danger)",
+              }}
+            >
+              ⚠
+            </div>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 8px" }}>
+              确认取消自动续费？
+            </h3>
+            <p style={{ fontSize: "0.84rem", color: "var(--muted)", lineHeight: 1.7, margin: "0 0 20px" }}>
+              取消后下个月将不再自动扣费，但您可以在当前套餐到期前继续使用全部 Pro / Premium 权益，到期后将自动转为免费版。
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "10px 20px",
+                  fontSize: "0.84rem",
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                  transition: "all .15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--ink)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
+              >
+                再想想
+              </button>
+              <button
+                onClick={handleCancelConfirm}
+                disabled={cancelling}
+                style={{
+                  background: "var(--danger)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "10px 20px",
+                  fontSize: "0.84rem",
+                  fontWeight: 600,
+                  cursor: cancelling ? "not-allowed" : "pointer",
+                  opacity: cancelling ? 0.6 : 1,
+                  transition: "opacity .15s",
+                }}
+                onMouseEnter={(e) => { if (!cancelling) e.currentTarget.style.opacity = "0.9"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = cancelling ? "0.6" : "1"; }}
+              >
+                {cancelling ? "处理中…" : "确认取消"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
