@@ -2,8 +2,9 @@
  * 用户存储（基于 Upstash Redis）
  *
  * 数据结构：
- *   user:{id}          → { id, email, passwordHash, createdAt, balance }
+ *   user:{id}          → { id, email, username, passwordHash, createdAt, balance }
  *   user:email:{email}  → userId（唯一索引）
+ *   user:username:{username} → userId（唯一索引）
  *   user:id:{id}:email  → email（反向校验）
  */
 
@@ -31,6 +32,7 @@ export type UserTier = "free" | "pro" | "premium";
 export interface User {
   id: string;
   email: string;
+  username: string;
   passwordHash: string;
   createdAt: string;
   /** 当前可用 token 余额 */
@@ -48,6 +50,7 @@ export interface User {
 export interface PublicUser {
   id: string;
   email: string;
+  username: string;
   createdAt: string;
   balance: number;
   totalPurchased: number;
@@ -60,6 +63,7 @@ function toPublic(user: User): PublicUser {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     createdAt: user.createdAt,
     balance: user.balance,
     totalPurchased: user.totalPurchased,
@@ -76,6 +80,7 @@ function newId(): string {
 /** 注册新用户 */
 export async function createUser(
   email: string,
+  username: string,
   password: string
 ): Promise<{ ok: true; user: PublicUser } | { ok: false; error: string }> {
   const redis = await getRedis();
@@ -84,9 +89,15 @@ export async function createUser(
   }
 
   // 检查邮箱是否已注册
-  const existing = await redis.get(`user:email:${email}`);
-  if (existing) {
+  const existingEmail = await redis.get(`user:email:${email}`);
+  if (existingEmail) {
     return { ok: false, error: "该邮箱已注册" };
+  }
+
+  // 检查用户名是否已注册
+  const existingUsername = await redis.get(`user:username:${username}`);
+  if (existingUsername) {
+    return { ok: false, error: "该用户名已被使用" };
   }
 
   const id = newId();
@@ -96,6 +107,7 @@ export async function createUser(
   const user: User = {
     id,
     email,
+    username,
     passwordHash,
     createdAt: now,
     balance: 0,
@@ -109,6 +121,7 @@ export async function createUser(
   const multi = redis.multi();
   multi.set(`user:${id}`, JSON.stringify(user));
   multi.set(`user:email:${email}`, id);
+  multi.set(`user:username:${username}`, id);
   multi.set(`user:${id}:balance`, 0); // 初始化原子余额 key
   const results = await multi.exec();
 
@@ -116,7 +129,7 @@ export async function createUser(
   const allOk = results.every((r) => r === "OK");
   if (!allOk) {
     // 回滚
-    await redis.del(`user:${id}`, `user:email:${email}`);
+    await redis.del(`user:${id}`, `user:email:${email}`, `user:username:${username}`);
     return { ok: false, error: "创建用户失败，请重试" };
   }
 
@@ -129,6 +142,20 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   if (!redis) return null;
 
   const id = await redis.get<string>(`user:email:${email}`);
+  if (!id) return null;
+
+  const raw = await redis.get<any>(`user:${id}`);
+  if (!raw) return null;
+
+  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+}
+
+/** 根据用户名查找用户 */
+export async function getUserByUsername(username: string): Promise<User | null> {
+  const redis = await getRedis();
+  if (!redis) return null;
+
+  const id = await redis.get<string>(`user:username:${username}`);
   if (!id) return null;
 
   const raw = await redis.get<any>(`user:${id}`);
@@ -161,18 +188,19 @@ export async function getUserById(id: string): Promise<User | null> {
   return user;
 }
 
-/** 验证登录 */
+/** 验证登录（login 可以是邮箱或用户名） */
 export async function loginUser(
-  email: string,
+  login: string,
   password: string
 ): Promise<{ ok: true; user: PublicUser } | { ok: false; error: string }> {
-  const user = await getUserByEmail(email);
+  const isEmail = login.includes("@");
+  const user = isEmail ? await getUserByEmail(login) : await getUserByUsername(login);
   if (!user) {
-    return { ok: false, error: "邮箱或密码错误" };
+    return { ok: false, error: "邮箱/用户名或密码错误" };
   }
 
   if (!verifyPassword(password, user.passwordHash)) {
-    return { ok: false, error: "邮箱或密码错误" };
+    return { ok: false, error: "邮箱/用户名或密码错误" };
   }
 
   return { ok: true, user: toPublic(user) };

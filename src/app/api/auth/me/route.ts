@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     user: {
       id: user.id,
       email: user.email,
+      username: user.username,
       createdAt: user.createdAt,
       balance: user.balance,
       totalPurchased: user.totalPurchased,

@@ -4,16 +4,16 @@ import { signJWT, serializeCookie } from "@/lib/auth";
 import { loginUser } from "@/lib/user-store";
 
 const schema = z.object({
-  email: z.string().email("请输入有效的邮箱地址"),
+  login: z.string().min(1, "请输入邮箱或用户名"),
   password: z.string().min(1, "请输入密码"),
 });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password } = schema.parse(body);
+    const { login, password } = schema.parse(body);
 
-    const result = await loginUser(email, password);
+    const result = await loginUser(login, password);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 401 });
     }
