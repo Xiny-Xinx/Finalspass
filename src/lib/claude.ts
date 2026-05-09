@@ -7,7 +7,7 @@
 
 export type Message = { role: "user" | "assistant" | "system"; content: string };
 
-export type ModelId = "deepseek-chat" | "claude-sonnet-4-20250514";
+export type ModelId = "deepseek-v4-flash" | "deepseek-v4-pro" | "deepseek-chat" | "claude-sonnet-4-20250514";
 
 export interface ModelOption {
   id: ModelId;
@@ -17,11 +17,13 @@ export interface ModelOption {
 }
 
 export const MODELS: ModelOption[] = [
-  { id: "deepseek-chat", label: "DeepSeek V3", provider: "deepseek", description: "性价比高，速度快" },
+  { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", provider: "deepseek", description: "最新 V4，速度快，1M 上下文" },
+  { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", provider: "deepseek", description: "V4 旗舰版，最强能力" },
+  { id: "deepseek-chat", label: "DeepSeek V3（旧）", provider: "deepseek", description: "旧版别名，2026-07-24 停用" },
   { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", provider: "anthropic", description: "质量高，适合复杂任务" },
 ];
 
-export const DEFAULT_MODEL: ModelId = "deepseek-chat";
+export const DEFAULT_MODEL: ModelId = "deepseek-v4-flash";
 const DEFAULT_MAX_TOKENS = 1500;
 
 export interface ChatOptions {
@@ -57,10 +59,11 @@ async function deepseekFetch(
 
 async function deepseekChat(
   messages: Message[],
-  maxTokens: number
+  maxTokens: number,
+  model: string
 ): Promise<{ text: string; usage: UsageInfo }> {
   const res = await deepseekFetch({
-    model: "deepseek-chat",
+    model,
     max_tokens: maxTokens,
     messages,
   });
@@ -83,10 +86,11 @@ async function deepseekChat(
 async function deepseekChatStream(
   messages: Message[],
   maxTokens: number,
+  model: string,
   onUsage?: (usage: UsageInfo) => void
 ): Promise<ReadableStream<string>> {
   const res = await deepseekFetch({
-    model: "deepseek-chat",
+    model,
     max_tokens: maxTokens,
     messages,
     stream: true,
@@ -350,7 +354,7 @@ export async function chat(
   if (model.startsWith("claude")) {
     return anthropicChat(messages, maxTokens);
   }
-  return deepseekChat(messages, maxTokens);
+  return deepseekChat(messages, maxTokens, model);
 }
 
 export async function chatStream(
@@ -374,7 +378,7 @@ export async function chatStream(
   if (model.startsWith("claude")) {
     return anthropicChatStream(messages, maxTokens, onUsage);
   }
-  return deepseekChatStream(messages, maxTokens, onUsage);
+  return deepseekChatStream(messages, maxTokens, model, onUsage);
 }
 
 /**
