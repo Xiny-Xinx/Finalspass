@@ -100,14 +100,14 @@ export default function AccountPage() {
   }
 
   async function handleCancel() {
-    if (!confirm("确定要取消订阅吗？取消后将降级为免费版，当前套餐到期后失效。")) return;
+    if (!confirm("取消后将停止自动续费，当前套餐权益可继续使用至到期日。确定取消？")) return;
     setCancelling(true);
     setMessage(null);
     try {
       const res = await fetch("/api/user/subscription/cancel", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setMessage("已取消订阅，已降级为免费版");
+        setMessage("已取消自动续费，当前套餐权益保留至到期日");
         // 刷新用户信息
         const authRes = await fetch("/api/auth/me");
         const authData = await authRes.json();
