@@ -409,7 +409,7 @@ export default function AccountPage() {
         {/* Premium */}
         <PlanCard
           name="Premium"
-          price="A$18.99"
+          price="A$18.49"
           priceLabel="/月"
           dailyLimit="1M tokens/天"
           models="全部模型"
