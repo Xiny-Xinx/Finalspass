@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 
@@ -15,7 +16,7 @@ interface OrderInfo {
   paidAt?: string;
 }
 
-export default function PaymentResultPage() {
+function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
@@ -150,7 +151,7 @@ export default function PaymentResultPage() {
                 margin: "0 0 24px",
               }}
             >
-              支付金额：¥{order?.amount?.toFixed(2)}
+              支付金额：${order?.amount?.toFixed(2)}
             </p>
             <button
               onClick={() => router.push("/account")}
@@ -228,5 +229,35 @@ export default function PaymentResultPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PaymentResultPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              border: "3px solid var(--border)",
+              borderTopColor: "var(--accent)",
+              borderRadius: "50%",
+              animation: "spin .8s linear infinite",
+            }}
+          />
+        </div>
+      }
+    >
+      <PaymentResultContent />
+    </Suspense>
   );
 }
