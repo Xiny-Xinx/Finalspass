@@ -76,6 +76,44 @@ export async function checkQuota(ip: string): Promise<void> {
   }
 }
 
+/**
+ * 诊断函数：返回环境变量的存在状态和 Redis 连接测试结果
+ * 仅在 /api/quota 中调用，帮助排查部署问题
+ */
+export async function diagnoseQuota(): Promise<Record<string, any>> {
+  const urlExists = !!process.env.UPSTASH_REDIS_REST_URL;
+  const tokenExists = !!process.env.UPSTASH_REDIS_REST_TOKEN;
+  const urlPrefix = process.env.UPSTASH_REDIS_REST_URL
+    ? process.env.UPSTASH_REDIS_REST_URL.substring(0, 20) + "..."
+    : null;
+  const tokenPrefix = process.env.UPSTASH_REDIS_REST_TOKEN
+    ? process.env.UPSTASH_REDIS_REST_TOKEN.substring(0, 8) + "..."
+    : null;
+
+  let connectionTest: string | null = null;
+  if (urlExists && tokenExists) {
+    try {
+      const { Redis } = await import("@upstash/redis");
+      const testClient = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL!,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      });
+      await testClient.set("__diag__", "ok", { ex: 60 });
+      const val = await testClient.get("__diag__");
+      connectionTest = val === "ok" ? "OK" : `unexpected value: ${val}`;
+    } catch (e: any) {
+      connectionTest = `FAILED: ${e?.message ?? e}`;
+    }
+  }
+
+  return {
+    env: { UPSTASH_REDIS_REST_URL: urlExists, UPSTASH_REDIS_REST_TOKEN: tokenExists },
+    preview: { UPSTASH_REDIS_REST_URL: urlPrefix, UPSTASH_REDIS_REST_TOKEN: tokenPrefix },
+    connectionTest,
+    nodeEnv: process.env.NODE_ENV ?? "unknown",
+  };
+}
+
 /** 查询当前配额使用情况 */
 export async function getQuota(ip: string): Promise<QuotaInfo> {
   const redis = await getRedis();
