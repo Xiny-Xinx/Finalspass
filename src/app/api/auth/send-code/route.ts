@@ -37,7 +37,8 @@ function generateCode(): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email } = schema.parse(body);
+    const { email: rawEmail } = schema.parse(body);
+    const email = rawEmail.toLowerCase().trim(); // 统一小写，避免大小写不一致
 
     const redis = await getRedis();
     if (!redis) {
@@ -55,12 +56,9 @@ export async function POST(req: NextRequest) {
     }
 
     const code = generateCode();
+    console.log(`[send-code] 生成验证码 email="${email}" code="${code}"`);
 
-    // 存到 Redis，10 分钟过期
-    await redis.set(`verify_code:${email}`, code, { ex: 600 });
-    console.log(`[send-code] 已存储验证码 email="${email}" code="${code}"`);
-
-    // 发送邮件
+    // 先发送邮件，成功后再存 Redis（避免邮件失败但码已写入）
     const appUrl = getAppUrl(req);
     const result = await sendEmail({
       to: email,
@@ -89,6 +87,10 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
+
+    // 邮件发送成功后才存入 Redis
+    await redis.set(`verify_code:${email}`, code, { ex: 600 });
+    console.log(`[send-code] 邮件发送成功，已存储验证码 email="${email}"`);
 
     return NextResponse.json({ ok: true, message: "验证码已发送" });
   } catch (error: unknown) {

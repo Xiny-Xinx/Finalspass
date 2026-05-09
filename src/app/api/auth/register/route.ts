@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password, code } = schema.parse(body);
+    const normalizedEmail = email.toLowerCase().trim(); // 统一小写（仅用于 verify_code key）
 
     // 验证验证码
     const redis = await getRedis();
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Redis 未配置，无法注册" }, { status: 500 });
     }
 
-    const storedCode = await redis.get<string>(`verify_code:${email}`);
-    console.log(`[register] 验证码校验 email="${email}" storedCode="${storedCode}" submittedCode="${code}" storedType=${typeof storedCode} submittedType=${typeof code}`);
+    const storedCode = await redis.get<string>(`verify_code:${normalizedEmail}`);
+    console.log(`[register] 验证码校验 email="${normalizedEmail}" storedCode="${storedCode}" submittedCode="${code}" storedType=${typeof storedCode} submittedType=${typeof code}`);
 
     if (!storedCode) {
       return NextResponse.json(
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 验证通过，删除已使用的验证码
-    await redis.del(`verify_code:${email}`);
+    await redis.del(`verify_code:${normalizedEmail}`);
 
     // 创建用户
     const result = await createUser(email, password);

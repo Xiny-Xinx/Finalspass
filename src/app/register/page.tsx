@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -36,6 +37,8 @@ export default function RegisterPage() {
         return;
       }
       setStep("code");
+      setSuccessMsg("验证码已发送到您的邮箱，请查收");
+      setTimeout(() => setSuccessMsg(null), 4000);
       setCountdown(60);
       const timer = setInterval(() => {
         setCountdown((c) => {
@@ -133,6 +136,20 @@ export default function RegisterPage() {
           }}
         >
           {error}
+        </p>
+      )}
+      {successMsg && (
+        <p
+          style={{
+            color: "var(--success)",
+            background: "rgba(34,197,94,0.1)",
+            padding: "8px 12px",
+            borderRadius: 8,
+            fontSize: "0.85rem",
+            marginBottom: 16,
+          }}
+        >
+          {successMsg}
         </p>
       )}
 
