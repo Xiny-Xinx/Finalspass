@@ -143,31 +143,40 @@ export async function withQuota(req: Request) {
       throw Object.assign(new Error("用户不存在"), { statusCode: 401 });
     }
 
-    // 3. 预检：余额是否至少能支付一次最低请求
-    if (user.balance < MIN_REQUEST_TOKENS) {
-      throw Object.assign(
-        new Error(`Token 余额不足（剩余 ${user.balance.toLocaleString()}），请充值`),
-        { statusCode: 402 }
-      );
-    }
+    // 3. 检查用户套餐类型，决定以哪个维度限制
+    const hasPaidTier = user.tier === "pro" || user.tier === "premium";
 
-    // 4. 每日上限检查
-    await checkUserDailyCap(auth.userId);
+    if (hasPaidTier) {
+      // 付费套餐用户：按每日上限控制，不检查 token 余额
+      await checkUserDailyCap(auth.userId);
+    } else {
+      // 免费用户：先检查余额，余额不足时走 IP 每日限额
+      if (user.balance < MIN_REQUEST_TOKENS) {
+        await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
+      }
+      // 每日上限（免费用户 30K）
+      await checkUserDailyCap(auth.userId);
+    }
 
     return {
       userId: auth.userId,
       ip,
       isLoggedIn: true as const,
+      tier: user.tier,
       /** AI 调用后，扣除实际消耗的 token 数 */
       deduct: async (tokens: number) => {
         if (tokens > 0) {
-          // 原子扣减
-          const result = await deductUserBalance(auth.userId, tokens);
-          if (!result.ok) {
-            console.error(`[quota] 扣减失败 userId=${auth.userId} tokens=${tokens}: ${result.error}`);
+          if (hasPaidTier) {
+            // 付费套餐：只记录每日消耗，不扣余额
+            await recordUserDailyUsage(auth.userId, tokens);
+          } else {
+            // 免费用户：从余额扣减（余额不足时静默跳过）
+            const result = await deductUserBalance(auth.userId, tokens);
+            if (!result.ok) {
+              console.error(`[quota] 扣减失败 userId=${auth.userId} tokens=${tokens}: ${result.error}`);
+            }
+            await recordUserDailyUsage(auth.userId, tokens);
           }
-          // 记录每日消耗
-          await recordUserDailyUsage(auth.userId, tokens);
         }
       },
     };
