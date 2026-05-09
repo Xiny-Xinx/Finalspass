@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Light theme (default) ── */
+:root {
+  --ink:    #1a1410;
+  --paper:  #f5f0e8;
+  --paper2: #ede7d9;
+  --accent: #c0392b;
+  --muted:  #8a7f72;
+  --card:   #faf7f2;
+  --border: #d4cbbf;
+  --success: #27ae60;
+  --overlay: rgba(26, 20, 16, 0.45);
+  --shadow-sm: 0 1px 3px rgba(26,20,16,.06);
+  --shadow-md: 0 4px 12px rgba(26,20,16,.08);
+  --shadow-lg: 0 8px 24px rgba(26,20,16,.10);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+/* ── Dark theme ── */
+[data-theme="dark"] {
+  --ink:    #e8e0d6;
+  --paper:  #161412;
+  --paper2: #211e1b;
+  --accent: #e87461;
+  --muted:  #8a7f72;
+  --card:   #1e1b18;
+  --border: #36322e;
+  --success: #4caf7d;
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.5);
+}
+
+body {
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  transition: background .3s ease, color .3s ease;
+}
+
+button, select, textarea, input {
+  font-family: inherit;
+}
+
+textarea:focus,
+input:focus,
+select:focus {
+  outline: none;
+}
+
+/* ── Smooth scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Animations ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .5; }
+}
+
+/* ── Knowledge card hover ── */
+.kcard {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.kcard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent) !important;
+}
+.kcard:hover .kcard-bar {
+  background: var(--accent) !important;
+}
+.kcard:hover .kcard-hint {
+  opacity: 1 !important;
+}
+
+/* ── Option item hover (quiz) ── */
+.opt-item:not(.answered):hover {
+  background: var(--paper2) !important;
+  border-color: var(--ink) !important;
+}
+
+/* ── Skeleton shimmer ── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    var(--card) 40%,
+    var(--border) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Toast animation ── */
+.toast-enter {
+  animation: slideUp .35s ease both;
+}
+.toast-exit {
+  animation: fadeIn .25s ease reverse both;
+}
