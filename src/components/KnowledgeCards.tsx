@@ -250,6 +250,7 @@ function CardItem({ card, index, onClick }: CardItemProps) {
           fontWeight: 600,
           marginBottom: 7,
           lineHeight: 1.4,
+          color: "var(--card-title)",
         }}
       >
         {card.title}
