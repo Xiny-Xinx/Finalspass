@@ -856,13 +856,8 @@ export default function Page() {
                                   </span>
                                 )}
                               </div>
-                              <div style={{ display: "flex", gap: 10, fontSize: "0.65rem", fontFamily: "monospace", color: "var(--muted)", marginBottom: 4 }}>
-                                <span>{detail?.speed}</span>
-                                <span>📐 {detail?.context}</span>
-                              </div>
-                              <div style={{ fontSize: "0.64rem", color: "var(--muted)", lineHeight: 1.5 }}>
-                                <div>{detail?.cost}</div>
-                                <div style={{ marginTop: 1, opacity: 0.75 }}>{detail?.note}</div>
+                              <div style={{ fontSize: "0.68rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                                {detail?.summary}
                               </div>
                             </button>
                           );

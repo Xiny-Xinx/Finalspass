@@ -25,38 +25,23 @@ export const MODELS: ModelOption[] = [
 
 /** 各模型的详细规格说明 */
 export const MODEL_DETAILS: Record<ModelId, {
-  speed: string;
-  context: string;
-  cost: string;
-  note: string;
+  summary: string;
   badge?: string;
 }> = {
   "deepseek-v4-flash": {
-    speed: "⚡ 快",
-    context: "1M tokens",
-    cost: "$0.14 / 1M 输入 · $0.28 / 1M 输出",
-    note: "默认模型。MoE 284B（激活 13B），日常使用性价比最高",
+    summary: "日常使用性价比最高，速度快、上下文 1M tokens",
     badge: "推荐",
   },
   "deepseek-v4-pro": {
-    speed: "🔸 中",
-    context: "1M tokens",
-    cost: "$0.44 / 1M 输入 · $1.74 / 1M 输出",
-    note: "旗舰版。MoE 1.6T（激活 49B），复杂推理/编程任务首选",
+    summary: "旗舰版，复杂推理/编程任务首选，上下文 1M tokens",
     badge: "最强",
   },
   "deepseek-chat": {
-    speed: "⚡ 快",
-    context: "128K tokens",
-    cost: "$0.28 / 1M 输入 · $0.42 / 1M 输出",
-    note: "旧版 V3 别名，将于 2026-07-24 停用，建议迁移到 V4 Flash",
+    summary: "旧版 V3 别名，将于 2026-07-24 停用，建议迁移到 V4 Flash",
     badge: "旧版",
   },
   "claude-sonnet-4-20250514": {
-    speed: "🔸 中",
-    context: "200K tokens",
-    cost: "$3.00 / 1M 输入 · $15.00 / 1M 输出",
-    note: "Anthropic 最新 Sonnet，需配置 ANTHROPIC_API_KEY",
+    summary: "Anthropic 最新 Sonnet，高质量回复，需配置 ANTHROPIC_API_KEY",
     badge: "高质量",
   },
 };
