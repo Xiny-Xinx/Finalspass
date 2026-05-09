@@ -49,6 +49,7 @@ export default function AccountPage() {
   const [pwNew, setPwNew] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
   const [pwChanging, setPwChanging] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -96,6 +97,29 @@ export default function AccountPage() {
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
+  }
+
+  async function handleCancel() {
+    if (!confirm("确定要取消订阅吗？取消后将降级为免费版，当前套餐到期后失效。")) return;
+    setCancelling(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/user/subscription/cancel", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage("已取消订阅，已降级为免费版");
+        // 刷新用户信息
+        const authRes = await fetch("/api/auth/me");
+        const authData = await authRes.json();
+        if (authData.user) setUser(authData.user);
+      } else {
+        setMessage(`取消失败：${data.error}`);
+      }
+    } catch {
+      setMessage("网络错误");
+    } finally {
+      setCancelling(false);
+    }
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -239,6 +263,25 @@ export default function AccountPage() {
             >
               到期<br />{formatDate(user.tierExpiresAt)}
             </div>
+          )}
+          {currentTier !== "free" && (
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              style={{
+                marginLeft: "auto",
+                background: "none",
+                border: "1px solid var(--danger)",
+                borderRadius: 8,
+                padding: "4px 10px",
+                color: "var(--danger)",
+                cursor: cancelling ? "not-allowed" : "pointer",
+                fontSize: "0.7rem",
+                opacity: cancelling ? 0.6 : 1,
+              }}
+            >
+              {cancelling ? "取消中…" : "取消订阅"}
+            </button>
           )}
         </div>
 

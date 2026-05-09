@@ -169,7 +169,9 @@ async function handleOrderCreated(event: LsWebhookEvent) {
         const subKey = `ls_sub:${subscriptionId}`;
         const subData = JSON.stringify({ userId: order.userId, tier: order.tier });
         await redis.set(subKey, subData, { ex: 365 * 86400 });
-        console.log(`[ls-webhook] 存储订阅映射 ${subKey}`);
+        // 反向索引：user:sub:{userId} → subscriptionId，便于取消时查找
+        await redis.set(`user:sub:${order.userId}`, subscriptionId, { ex: 365 * 86400 });
+        console.log(`[ls-webhook] 存储订阅映射 ${subKey} 和用户索引`);
       }
     }
   }
