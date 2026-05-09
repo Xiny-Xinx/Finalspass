@@ -313,7 +313,7 @@ export default function AccountPage() {
             <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontFamily: "monospace" }}>
               Token 余额
             </div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)" }}>
               {user.balance.toLocaleString()}
             </div>
           </div>
@@ -438,7 +438,7 @@ export default function AccountPage() {
               onMouseEnter={(e) => { if (!recharging) e.currentTarget.style.borderColor = "var(--accent)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
             >
-              <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>${pkg.price}</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)" }}>${pkg.price}</div>
               <div style={{ fontSize: "0.75rem", color: "var(--muted)", fontFamily: "monospace" }}>
                 {pkg.label} tokens
               </div>
@@ -595,7 +595,7 @@ function PlanCard({
         </div>
       )}
 
-      <div style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: 2 }}>{name}</div>
+      <div style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: 2, color: "var(--ink)" }}>{name}</div>
       <div style={{ marginBottom: 12 }}>
         <span style={{ fontSize: "1.5rem", fontWeight: 700, color }}>{price}</span>
         <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{priceLabel}</span>
