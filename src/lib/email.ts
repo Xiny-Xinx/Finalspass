@@ -34,6 +34,9 @@ export async function sendEmail(params: {
     return { ok: false, error: "邮件服务未配置" };
   }
 
+  const from = getFrom();
+  console.log(`[email] 发送邮件 from="${from}" to="${params.to}" subject="${params.subject}"`);
+
   try {
     const res = await fetch(RESEND_API, {
       method: "POST",
@@ -42,7 +45,7 @@ export async function sendEmail(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: getFrom(),
+        from,
         to: [params.to],
         subject: params.subject,
         html: params.html,
@@ -55,6 +58,7 @@ export async function sendEmail(params: {
       return { ok: false, error: body.message ?? "发送失败" };
     }
 
+    console.log(`[email] 发送成功 to="${params.to}"`);
     return { ok: true };
   } catch (err) {
     console.error("[email] Network error:", err);

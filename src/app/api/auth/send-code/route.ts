@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
 
     // 存到 Redis，10 分钟过期
     await redis.set(`verify_code:${email}`, code, { ex: 600 });
+    console.log(`[send-code] 已存储验证码 email="${email}" code="${code}"`);
 
     // 发送邮件
     const appUrl = getAppUrl(req);

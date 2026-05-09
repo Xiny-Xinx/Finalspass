@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     const storedCode = await redis.get<string>(`verify_code:${email}`);
+    console.log(`[register] 验证码校验 email="${email}" storedCode="${storedCode}" submittedCode="${code}" storedType=${typeof storedCode} submittedType=${typeof code}`);
+
     if (!storedCode) {
       return NextResponse.json(
         { error: "验证码已过期，请重新获取" },
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
     if (storedCode !== code) {
       return NextResponse.json(
-        { error: "验证码错误" },
+        { error: `验证码错误` },
         { status: 400 }
       );
     }
