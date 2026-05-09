@@ -74,7 +74,8 @@ export async function GET(req: Request) {
       dailyCap: DAILY_TOKEN_LIMIT,
       rateLimit: GUEST_RPM_LIMIT,
     });
-  } catch {
+  } catch (err) {
+    console.error("[quota] 查询配额失败:", err);
     return NextResponse.json({ error: "查询配额失败" }, { status: 500 });
   }
 }
