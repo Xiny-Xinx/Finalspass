@@ -197,6 +197,27 @@ export async function updatePassword(
   return saveUser(user);
 }
 
+/** 修改密码（需验证旧密码） */
+export async function changePassword(
+  userId: string,
+  oldPassword: string,
+  newPassword: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getUserById(userId);
+  if (!user) {
+    return { ok: false, error: "用户不存在" };
+  }
+  if (!verifyPassword(oldPassword, user.passwordHash)) {
+    return { ok: false, error: "旧密码错误" };
+  }
+  user.passwordHash = hashPassword(newPassword);
+  const saved = await saveUser(user);
+  if (!saved) {
+    return { ok: false, error: "保存失败，请重试" };
+  }
+  return { ok: true };
+}
+
 /** 更新用户信息到 Redis */
 async function saveUser(user: User): Promise<boolean> {
   const redis = await getRedis();
