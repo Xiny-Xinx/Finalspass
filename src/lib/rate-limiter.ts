@@ -83,3 +83,47 @@ export async function checkGuestRateLimit(ip: string, limit: number): Promise<Ra
 export async function checkUserRateLimit(userId: string, limit: number): Promise<RateLimitResult> {
   return checkRate(userKey(userId), limit);
 }
+
+/** 登录失败计数 key */
+function authFailKey(ip: string): string {
+  return `auth:fail:${ip}`;
+}
+
+/**
+ * 检查 IP 的登录/注册频率限制
+ * @param ip 客户端 IP
+ * @param limit 允许的尝试次数
+ * @param windowSec 时间窗口（秒）
+ */
+export async function checkAuthRateLimit(
+  ip: string,
+  limit: number,
+  windowSec: number = 300
+): Promise<{ allowed: boolean; remaining: number }> {
+  const redis = await getRedis();
+  if (!redis) return { allowed: true, remaining: limit };
+
+  const key = authFailKey(ip);
+  try {
+    const count = await redis.incr(key);
+    if (count === 1) {
+      await redis.expire(key, windowSec);
+    }
+    const ttl = await redis.ttl(key);
+    if (ttl > 0 && count > limit) {
+      return { allowed: false, remaining: 0 };
+    }
+    return { allowed: true, remaining: Math.max(0, limit - count) };
+  } catch {
+    return { allowed: true, remaining: limit };
+  }
+}
+
+/**
+ * 重置 IP 的登录/注册频率（成功后调用）
+ */
+export async function resetAuthRateLimit(ip: string): Promise<void> {
+  const redis = await getRedis();
+  if (!redis) return;
+  await redis.del(authFailKey(ip));
+}

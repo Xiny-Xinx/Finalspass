@@ -3,6 +3,8 @@ import { z } from "zod";
 import { signJWT, serializeCookie } from "@/lib/auth";
 import { createUser } from "@/lib/user-store";
 import { getAppUrl } from "@/lib/app-url";
+import { checkAuthRateLimit, resetAuthRateLimit } from "@/lib/rate-limiter";
+import { getClientIP } from "@/lib/rate-limit";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis() {
@@ -33,6 +35,17 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIP(req);
+
+    // 频率限制：同一 IP 每 10 分钟最多注册 2 个账号
+    const rateCheck = await checkAuthRateLimit(ip, 2, 600);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "注册过于频繁，请稍后再试" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { email, username, password, code } = schema.parse(body);
     const normalizedEmail = email.toLowerCase().trim(); // 统一小写（仅用于 verify_code key）
@@ -69,6 +82,9 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
+
+    // 注册成功 → 重置频率计数
+    await resetAuthRateLimit(ip);
 
     // 签发 JWT
     const token = signJWT({ userId: result.user.id, email: result.user.email });
