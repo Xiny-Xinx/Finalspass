@@ -4,6 +4,14 @@ import { getAuthUser } from "@/lib/quota-guard";
 
 export const dynamic = "force-dynamic";
 
+/** 检查当前用户是否为管理员 */
+async function isAdmin(userId: string): Promise<boolean> {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return false;
+  const info = await getUserInfo(userId);
+  return info?.email === adminEmail;
+}
+
 /** 获取所有对话列表（仅用于管理后台） */
 export async function GET(req: NextRequest) {
   const auth = getAuthUser(req);
@@ -11,9 +19,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
   }
 
-  // 简单管理员验证：只允许本人的账户（后期可加 ADMIN_EMAIL 环境变量）
-  const user = await getUserInfo(auth.userId);
-  if (!user) {
+  if (!(await isAdmin(auth.userId))) {
     return NextResponse.json({ error: "无权限" }, { status: 403 });
   }
 
@@ -43,6 +49,10 @@ export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  }
+
+  if (!(await isAdmin(auth.userId))) {
+    return NextResponse.json({ error: "无权限" }, { status: 403 });
   }
 
   const body = await req.json();

@@ -209,6 +209,7 @@ export default function Page() {
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportMsg, setSupportMsg] = useState("");
   const [supportChat, setSupportChat] = useState<{role:"user"|"assistant"; content:string}[]>([]);
@@ -266,6 +267,10 @@ export default function Page() {
           setModel((prev) => allowedModels.includes(prev) ? prev : allowedModels[0]);
         }
       })
+      .catch(() => {});
+    fetch("/api/user/support/admin/check")
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.admin === true))
       .catch(() => {});
   }, []);
 
@@ -1291,18 +1296,20 @@ export default function Page() {
                     条款
                   </a>
                   <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
-                  {isLoggedIn && (
-                  <a
-                    href="/admin/messages"
-                    onClick={() => setMenuOpen(false)}
-                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
-                  >
-                    工单
-                  </a>
+                  {isAdmin && (
+                  <>
+                    <a
+                      href="/admin/messages"
+                      onClick={() => setMenuOpen(false)}
+                      style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                    >
+                      工单
+                    </a>
+                    <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
+                  </>
                 )}
-                {isLoggedIn && <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>}
                 <button
                     onClick={() => { setMenuOpen(false); setSupportOpen(true); }}
                     style={{
