@@ -29,6 +29,7 @@ export async function GET(req: Request) {
         balance: user.balance,
         totalPurchased: user.totalPurchased,
         email: user.email,
+        verified: user.verified,
         isLoggedIn: true,
         diagnostics,
       });

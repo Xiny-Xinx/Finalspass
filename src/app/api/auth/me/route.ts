@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       createdAt: user.createdAt,
       balance: user.balance,
       totalPurchased: user.totalPurchased,
+      verified: user.verified,
     },
   });
 }

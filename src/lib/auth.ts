@@ -38,6 +38,8 @@ export function verifyPassword(password: string, stored: string): boolean {
 export interface JwtPayload {
   userId: string;
   email: string;
+  /** Token 用途: "auth" | "verify" | "reset" */
+  purpose?: string;
   /** 签发时间（Unix 秒） */
   iat: number;
   /** 过期时间（Unix 秒） */

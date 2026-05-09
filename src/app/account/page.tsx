@@ -9,6 +9,7 @@ interface UserInfo {
   createdAt: string;
   balance: number;
   totalPurchased: number;
+  verified: boolean;
 }
 
 export default function AccountPage() {
@@ -116,7 +117,21 @@ export default function AccountPage() {
         }}
       >
         <p style={{ margin: "0 0 4px", fontSize: "0.85rem", color: "var(--muted)" }}>邮箱</p>
-        <p style={{ margin: "0 0 16px", fontWeight: 500 }}>{user.email}</p>
+        <p style={{ margin: "0 0 16px", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+          {user.email}
+          <span
+            style={{
+              fontSize: "0.7rem",
+              padding: "2px 8px",
+              borderRadius: 10,
+              background: user.verified ? "rgba(0,200,80,0.12)" : "rgba(255,170,0,0.15)",
+              color: user.verified ? "#00b84d" : "#e68a00",
+              fontWeight: 500,
+            }}
+          >
+            {user.verified ? "已验证" : "未验证"}
+          </span>
+        </p>
 
         <p style={{ margin: "0 0 4px", fontSize: "0.85rem", color: "var(--muted)" }}>Token 余额</p>
         <p style={{ margin: 0, fontSize: "1.8rem", fontWeight: 700 }}>
@@ -127,6 +142,44 @@ export default function AccountPage() {
           累计充值：{user.totalPurchased.toLocaleString()} tokens
         </p>
       </div>
+
+      {/* 未验证提示 */}
+      {!user.verified && (
+        <div
+          style={{
+            background: "rgba(255,170,0,0.06)",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            border: "1px solid rgba(255,170,0,0.2)",
+          }}
+        >
+          <p style={{ margin: "0 0 8px", fontSize: "0.9rem", fontWeight: 600 }}>
+            邮箱未验证
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: "0.85rem", color: "var(--muted)" }}>
+            请检查收件箱（包括垃圾邮件），点击验证链接完成验证。
+          </p>
+          <button
+            onClick={async () => {
+              const res = await fetch("/api/auth/resend-verification", { method: "POST" });
+              const data = await res.json();
+              setMessage(data.message || data.error || "已发送");
+            }}
+            style={{
+              background: "none",
+              border: "1.5px solid var(--border)",
+              borderRadius: 8,
+              padding: "8px 16px",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+            }}
+          >
+            重新发送验证邮件
+          </button>
+        </div>
+      )}
 
       {/* 充值区域 */}
       <div

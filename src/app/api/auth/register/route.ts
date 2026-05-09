@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { signJWT, serializeCookie } from "@/lib/auth";
 import { createUser } from "@/lib/user-store";
+import { sendEmail } from "@/lib/email";
+import { verificationEmail } from "@/lib/email-templates";
+import { getAppUrl } from "@/lib/app-url";
 
 const schema = z.object({
   email: z.string().email("请输入有效的邮箱地址"),
@@ -18,12 +21,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
 
-    // 签发 JWT，有效期 7 天
+    // 签发 JWT（注册后自动登录）
     const token = signJWT({ userId: result.user.id, email: result.user.email });
     const cookie = serializeCookie("fp_token", token, 7 * 24 * 3600);
 
+    // 异步发送验证邮件（不阻塞注册流程）
+    const verifyToken = signJWT(
+      { userId: result.user.id, email: result.user.email, purpose: "verify" as const },
+      24 * 3600 // 24 小时有效期
+    );
+    const baseUrl = getAppUrl(req);
+    const verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+
+    // fire-and-forget
+    sendEmail({
+      to: email,
+      subject: "验证你的 FinalsPass 邮箱",
+      html: verificationEmail(verifyLink),
+    });
+
     return NextResponse.json(
-      { user: result.user },
+      { user: { ...result.user, verified: false } },
       { headers: { "Set-Cookie": cookie } }
     );
   } catch (error: unknown) {

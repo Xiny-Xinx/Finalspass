@@ -35,6 +35,8 @@ export interface User {
   balance: number;
   /** 累计充值总额（tokens） */
   totalPurchased: number;
+  /** 邮箱是否已验证 */
+  verified: boolean;
 }
 
 export interface PublicUser {
@@ -43,6 +45,7 @@ export interface PublicUser {
   createdAt: string;
   balance: number;
   totalPurchased: number;
+  verified: boolean;
 }
 
 function toPublic(user: User): PublicUser {
@@ -52,6 +55,7 @@ function toPublic(user: User): PublicUser {
     createdAt: user.createdAt,
     balance: user.balance,
     totalPurchased: user.totalPurchased,
+    verified: user.verified,
   };
 }
 
@@ -86,6 +90,7 @@ export async function createUser(
     createdAt: now,
     balance: 0,
     totalPurchased: 0,
+    verified: false,
   };
 
   // 使用 multi 保证原子性
@@ -145,6 +150,25 @@ export async function loginUser(
   }
 
   return { ok: true, user: toPublic(user) };
+}
+
+/** 标记邮箱已验证 */
+export async function markVerified(userId: string): Promise<boolean> {
+  const user = await getUserById(userId);
+  if (!user) return false;
+  user.verified = true;
+  return saveUser(user);
+}
+
+/** 更新密码 */
+export async function updatePassword(
+  userId: string,
+  newPassword: string
+): Promise<boolean> {
+  const user = await getUserById(userId);
+  if (!user) return false;
+  user.passwordHash = hashPassword(newPassword);
+  return saveUser(user);
 }
 
 /** 更新用户信息到 Redis */

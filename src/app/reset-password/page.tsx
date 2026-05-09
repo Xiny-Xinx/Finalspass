@@ -1,37 +1,80 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!token) {
+      setError("缺少重置参数");
+      return;
+    }
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ token, password }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "登录失败");
+        setError(data.error || "重置失败");
         return;
       }
-      router.push("/");
+      setDone(true);
     } catch {
       setError("网络错误，请重试");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (done) {
+    return (
+      <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
+        <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>密码已重置</h1>
+        <p style={{ color: "var(--muted)", marginBottom: 24 }}>请使用新密码重新登录。</p>
+        <a
+          href="/login"
+          style={{
+            display: "block",
+            textAlign: "center",
+            padding: "10px 0",
+            borderRadius: 8,
+            background: "var(--accent)",
+            color: "#fff",
+            textDecoration: "none",
+            fontSize: "1rem",
+          }}
+        >
+          去登录
+        </a>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
+        <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>无效链接</h1>
+        <p style={{ color: "var(--muted)" }}>密码重置链接无效，请重新申请。</p>
+        <a href="/forgot-password" style={{ color: "var(--accent)", textDecoration: "none" }}>
+          重新申请
+        </a>
+      </div>
+    );
   }
 
   return (
@@ -43,9 +86,9 @@ export default function LoginPage() {
         fontFamily: "system-ui, sans-serif",
       }}
     >
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 8 }}>登录</h1>
+      <h1 style={{ fontSize: "1.5rem", marginBottom: 8 }}>设置新密码</h1>
       <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: "0.9rem" }}>
-        登录后可使用已充值的 Token
+        输入你的新密码。
       </p>
 
       {error && (
@@ -66,29 +109,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
           <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--muted)" }}>
-            邮箱
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1.5px solid var(--border)",
-              background: "transparent",
-              color: "inherit",
-              fontSize: "1rem",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        <div>
-          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--muted)" }}>
-            密码
+            新密码（至少 6 位）
           </label>
           <input
             type="password"
@@ -124,29 +145,9 @@ export default function LoginPage() {
             marginTop: 8,
           }}
         >
-          {loading ? "登录中…" : "登录"}
+          {loading ? "重置中…" : "重置密码"}
         </button>
-
-        <a
-          href="/forgot-password"
-          style={{
-            textAlign: "center",
-            color: "var(--muted)",
-            fontSize: "0.83rem",
-            textDecoration: "none",
-            marginTop: 4,
-          }}
-        >
-          忘记密码？
-        </a>
       </form>
-
-      <p style={{ textAlign: "center", marginTop: 24, fontSize: "0.85rem", color: "var(--muted)" }}>
-        还没有账号？{" "}
-        <a href="/register" style={{ color: "var(--accent)", textDecoration: "none" }}>
-          注册
-        </a>
-      </p>
     </div>
   );
 }
