@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
         to: email,
         subject: "重置你的 FinalsPass 密码",
         html: resetPasswordEmail(resetLink),
+      }).then((r) => {
+        if (!r.ok) console.error("[forgot-password] 发送重置邮件失败:", r.error);
       });
+    } else {
+      console.log(`[forgot-password] 用户不存在, email="${email}"`);
     }
 
     return NextResponse.json({

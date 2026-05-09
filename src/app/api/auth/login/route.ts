@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    console.error("[login] 登录异常:", error);
     return NextResponse.json({ error: "登录失败" }, { status: 500 });
   }
 }
