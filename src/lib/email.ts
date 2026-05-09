@@ -19,7 +19,7 @@ function getApiKey(): string | null {
 }
 
 function getFrom(): string {
-  return process.env.RESEND_FROM || "FinalsPass <onboarding@resend.dev>";
+  return process.env.RESEND_FROM || "FinalsPass <noreply@finalspass.top>";
 }
 
 /** 发送邮件 */
