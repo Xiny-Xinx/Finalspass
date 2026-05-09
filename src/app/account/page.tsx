@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TIER_PRICES, TIER_LIMITS, TOP_UP_PACKAGES, TOP_UP_RATE } from "@/lib/constants";
+import { TIER_PRICES, TIER_LIMITS } from "@/lib/constants";
 import { TIER_MODELS, type ModelId } from "@/lib/claude";
 
 interface UserInfo {
@@ -44,7 +44,6 @@ export default function AccountPage() {
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [recharging, setRecharging] = useState(false);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [pwOld, setPwOld] = useState("");
   const [pwNew, setPwNew] = useState("");
@@ -70,29 +69,6 @@ export default function AccountPage() {
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
   }, [router]);
-
-  async function handleRecharge(tokens: number) {
-    setRecharging(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/user/recharge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokens }),
-      });
-      const data = await res.json();
-      if (res.ok && data.redirectUrl) {
-        // 跳转到支付宝支付
-        window.location.href = data.redirectUrl;
-      } else {
-        setMessage(`失败：${data.error}`);
-        setRecharging(false);
-      }
-    } catch {
-      setMessage("网络错误");
-      setRecharging(false);
-    }
-  }
 
   async function handleSubscribe(tier: "pro" | "premium") {
     setSubscribing(tier);
@@ -371,7 +347,7 @@ export default function AccountPage() {
         {/* Pro */}
         <PlanCard
           name="Pro"
-          price="$5"
+          price="$5.99"
           priceLabel="/月"
           dailyLimit="300K tokens/天"
           models="全部模型"
@@ -385,7 +361,7 @@ export default function AccountPage() {
         {/* Premium */}
         <PlanCard
           name="Premium"
-          price="$12"
+          price="$12.99"
           priceLabel="/月"
           dailyLimit="1M tokens/天"
           models="全部模型"
@@ -396,55 +372,6 @@ export default function AccountPage() {
           loading={subscribing === "premium"}
           popular
         />
-      </div>
-
-      {/* ── 充值 ── */}
-      <h2 style={{ fontSize: "1.05rem", margin: "0 0 16px", fontWeight: 600 }}>按量充值</h2>
-      <div
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--card-border)",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <p
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--muted)",
-            margin: "0 0 16px",
-          }}
-        >
-          充值后 tokens 永久有效，不会按月清零。约 ${TOP_UP_RATE}/百万 tokens。
-        </p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-          {TOP_UP_PACKAGES.map((pkg) => (
-            <button
-              key={pkg.tokens}
-              onClick={() => handleRecharge(pkg.tokens)}
-              disabled={recharging}
-              style={{
-                flex: 1,
-                minWidth: 120,
-                padding: "14px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--border)",
-                background: "var(--paper2)",
-                cursor: recharging ? "not-allowed" : "pointer",
-                textAlign: "center",
-                transition: "border-color .15s",
-              }}
-              onMouseEnter={(e) => { if (!recharging) e.currentTarget.style.borderColor = "var(--accent)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-            >
-              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)" }}>${pkg.price}</div>
-              <div style={{ fontSize: "0.75rem", color: "var(--muted)", fontFamily: "monospace" }}>
-                {pkg.label} tokens
-              </div>
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* ── 修改密码 ── */}

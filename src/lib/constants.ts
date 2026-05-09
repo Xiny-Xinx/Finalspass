@@ -29,8 +29,8 @@ export const TIER_LIMITS: Record<string, number> = {
 /** 各套餐的价格（美元/月） */
 export const TIER_PRICES: Record<string, number> = {
   free: 0,
-  pro: 5,
-  premium: 12,
+  pro: 5.99,
+  premium: 12.99,
 };
 
 /** 充值包：tokens -> 价格（美元） */
