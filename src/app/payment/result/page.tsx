@@ -151,7 +151,7 @@ function PaymentResultContent() {
                 margin: "0 0 24px",
               }}
             >
-              支付金额：${order?.amount?.toFixed(2)}
+              支付金额：A${order?.amount?.toFixed(2)}
             </p>
             <button
               onClick={() => router.push("/account")}

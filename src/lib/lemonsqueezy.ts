@@ -41,13 +41,25 @@ export function isLsConfigured(): boolean {
  * @param redirectUrl 支付成功后的跳转地址
  */
 export async function createCheckout(
-  priceCents: number,
+  priceCents: number | undefined,
   name: string,
   description: string,
   customData: Record<string, string>,
-  redirectUrl: string
+  redirectUrl: string,
+  variantId?: string
 ): Promise<{ url: string; checkoutId: string } | { error: string }> {
   const cfg = getConfig();
+  const vId = variantId || cfg.variantId;
+
+  const checkoutData: Record<string, unknown> = {
+    name,
+    description,
+    success_url: redirectUrl,
+    custom: customData,
+  };
+  if (priceCents !== undefined) {
+    checkoutData.custom_price = priceCents;
+  }
 
   try {
     const res = await fetch(`${LS_BASE}/checkouts`, {
@@ -61,20 +73,14 @@ export async function createCheckout(
         data: {
           type: "checkouts",
           attributes: {
-            checkout_data: {
-              custom_price: priceCents,
-              name,
-              description,
-              success_url: redirectUrl,
-              custom: customData,
-            },
+            checkout_data: checkoutData,
           },
           relationships: {
             store: {
               data: { type: "stores", id: cfg.storeId },
             },
             variant: {
-              data: { type: "variants", id: cfg.variantId },
+              data: { type: "variants", id: vId },
             },
           },
         },

@@ -347,7 +347,7 @@ export default function AccountPage() {
         {/* Pro */}
         <PlanCard
           name="Pro"
-          price="$5.99"
+          price="A$12.99"
           priceLabel="/月"
           dailyLimit="300K tokens/天"
           models="全部模型"
@@ -361,7 +361,7 @@ export default function AccountPage() {
         {/* Premium */}
         <PlanCard
           name="Premium"
-          price="$12.99"
+          price="A$24.99"
           priceLabel="/月"
           dailyLimit="1M tokens/天"
           models="全部模型"

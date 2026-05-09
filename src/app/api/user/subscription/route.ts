@@ -21,6 +21,12 @@ const TIER_LABEL: Record<string, string> = {
   premium: "Premium",
 };
 
+/** 各套餐对应的 LS Variant ID（在 LS 后台 Product Variants 获取） */
+const TIER_VARIANT: Record<string, string> = {
+  pro: process.env.LS_VARIANT_PRO || "",
+  premium: process.env.LS_VARIANT_PREMIUM || "",
+};
+
 const schema = z.object({
   tier: z.enum(["pro", "premium"]),
 });
@@ -58,9 +64,15 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const redirectUrl = `${baseUrl}/payment/result?out_trade_no=${order.outTradeNo}`;
 
-    // 创建 LS Checkout
+    // 检查对应套餐的 Variant ID 是否配置
+    const variantId = TIER_VARIANT[tier];
+    if (!variantId) {
+      return NextResponse.json({ error: "套餐支付配置未完成" }, { status: 500 });
+    }
+
+    // 创建 LS Checkout（使用套餐各自的固定价格 Variant，不传 custom_price）
     const checkout = await createCheckout(
-      Math.round(amount * 100), // 美分
+      undefined, // 使用 variant 固定价格
       `${TIER_LABEL[tier]} 套餐 · 月付`,
       `${TIER_LABEL[tier]} 套餐，30 天有效期`,
       {
@@ -69,7 +81,8 @@ export async function POST(req: NextRequest) {
         tier,
         out_trade_no: order.outTradeNo,
       },
-      redirectUrl
+      redirectUrl,
+      variantId
     );
 
     if ("error" in checkout) {
