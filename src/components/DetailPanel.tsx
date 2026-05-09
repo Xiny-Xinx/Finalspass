@@ -4,17 +4,20 @@ import type { Card } from "@/lib/api-client";
 import { askQuestion } from "@/lib/api-client";
 import { MAX_DETAIL_CONTEXT_CHARS } from "@/lib/constants";
 import MarkdownRenderer, { CopyButton } from "@/components/MarkdownRenderer";
+import type { ModelId } from "@/lib/claude";
 
 interface DetailPanelProps {
   card: Card;
   pptContent: string;
   onClose: () => void;
+  model?: ModelId;
 }
 
 export default function DetailPanel({
   card,
   pptContent,
   onClose,
+  model,
 }: DetailPanelProps) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -59,6 +62,7 @@ export default function DetailPanel({
       askQuestion(
         {
           mode: "detail",
+          model,
           question: `对知识点"${card.title}"进行详细解释。\n概述:${
             card.summary
           }\n\n课件节选:${pptContent.slice(0, MAX_DETAIL_CONTEXT_CHARS)}`,
@@ -78,7 +82,7 @@ export default function DetailPanel({
           setLoading(false);
         });
     },
-    [card.title, card.summary, pptContent]
+    [card.title, card.summary, pptContent, model]
   );
 
   useEffect(() => {

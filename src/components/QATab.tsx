@@ -15,10 +15,12 @@ import {
 import { MAX_CHAT_HISTORY } from "@/lib/constants";
 import { getRelevantMemories, saveMemory } from "@/lib/store";
 import MarkdownRenderer, { CopyButton } from "@/components/MarkdownRenderer";
+import type { ModelId } from "@/lib/claude";
 
 interface QATabProps {
   pptContent: string;
   cards: Card[];
+  model?: ModelId;
 }
 
 interface QATabHandle {
@@ -98,7 +100,7 @@ function useTypewriter(
 }
 
 const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
-  { pptContent, cards },
+  { pptContent, cards, model },
   ref
 ) {
   const [msgs, setMsgs] = useState<QAMsg[]>([]);
@@ -158,6 +160,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
           context: pptContent,
           history: history.slice(-MAX_CHAT_HISTORY),
           memories,
+          model,
         },
         { signal: ctrl.signal }
       );

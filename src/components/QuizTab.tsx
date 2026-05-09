@@ -2,15 +2,17 @@
 import { useEffect, useRef, useState } from "react";
 import { generateQuiz, type QuizQuestion } from "@/lib/api-client";
 import { saveQuizState, loadQuizState, clearQuizState } from "@/lib/store";
+import type { ModelId } from "@/lib/claude";
 
 type QuizType = "mixed" | "choice" | "judge";
 
 interface QuizTabProps {
   pptContent: string;
   fileName?: string;
+  model?: ModelId;
 }
 
-export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
+export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const [count, setCount] = useState<number>(5);
   const [type, setType] = useState<QuizType>("mixed");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -50,6 +52,7 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
         content: pptContent,
         count,
         type,
+        model,
       });
       setQuestions(data.questions);
     } catch (err: unknown) {

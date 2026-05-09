@@ -12,6 +12,7 @@ import { extractCards, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY } from "@/lib/constants";
 import { saveSession, listSessions, loadSession, deleteSession, clearAllSessions } from "@/lib/store";
 import type { SessionMeta } from "@/lib/store";
+import { MODELS, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 
 type Stage = "upload" | "processing" | "results";
 type Tab = "cards" | "qa" | "quiz";
@@ -205,6 +206,12 @@ export default function Page() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
+  const [model, setModel] = useState<ModelId>(() => {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("finalspass-model") : null;
+      return stored && MODELS.some(m => m.id === stored) ? stored as ModelId : DEFAULT_MODEL;
+    } catch { return DEFAULT_MODEL; }
+  });
   const qaRef = useRef<{ focusInput: () => void } | null>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -221,6 +228,11 @@ export default function Page() {
       setTimeout(() => setToast(null), 3500);
     }
   }, []);
+
+  // 模型选择持久化
+  useEffect(() => {
+    try { localStorage.setItem("finalspass-model", model); } catch {}
+  }, [model]);
 
   // 初始化主题 & 加载最近会话
   useEffect(() => {
@@ -319,7 +331,7 @@ export default function Page() {
       const truncated = text.slice(0, MAX_EXTRACT_CHARS);
 
       setProcessMsg("AI 正在提炼知识点...");
-      const data = await extractCards(text);
+      const data = await extractCards(text, { model });
 
       setCards(data.cards);
       setPptContent(truncated);
@@ -763,8 +775,8 @@ export default function Page() {
                 onCardClick={(card) => setDetailCard(card)}
               />
             )}
-            {tab === "qa" && <QATab ref={qaRef} pptContent={pptContent} cards={cards} />}
-            {tab === "quiz" && <QuizTab pptContent={pptContent} fileName={fileName} />}
+            {tab === "qa" && <QATab ref={qaRef} pptContent={pptContent} cards={cards} model={model} />}
+            {tab === "quiz" && <QuizTab pptContent={pptContent} fileName={fileName} model={model} />}
           </>
         )}
       </main>
@@ -775,6 +787,7 @@ export default function Page() {
           card={detailCard}
           pptContent={pptContent}
           onClose={() => setDetailCard(null)}
+          model={model}
         />
       )}
 
@@ -944,6 +957,44 @@ export default function Page() {
                 gap: 2,
               }}
             >
+              {/* 模型选择 */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  fontSize: "0.75rem",
+                  color: "var(--muted)",
+                  fontFamily: "monospace",
+                }}
+              >
+                <span>🤖 模型</span>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value as ModelId)}
+                  aria-label="选择 AI 模型"
+                  style={{
+                    flex: 1,
+                    background: "var(--paper2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "4px 6px",
+                    fontSize: "0.72rem",
+                    color: "var(--ink)",
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  {MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* 主题切换 */}
               <button
                 type="button"

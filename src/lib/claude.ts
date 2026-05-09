@@ -1,19 +1,33 @@
 /**
- * DeepSeek API 封装（OpenAI 兼容格式）
+ * 多模型 AI 封装
  *
- * 使用 fetch 直连 api.deepseek.com，无需额外 SDK。
+ * 支持 DeepSeek（OpenAI 兼容格式）和 Anthropic Claude。
+ * 所有函数通过 model 参数自动派发到对应 provider。
  */
 
 export type Message = { role: "user" | "assistant" | "system"; content: string };
 
-const DEEPSEEK_BASE = "https://api.deepseek.com";
-const DEFAULT_MODEL = "deepseek-chat";
+export type ModelId = "deepseek-chat" | "claude-sonnet-4-20250514";
+
+export interface ModelOption {
+  id: ModelId;
+  label: string;
+  provider: "deepseek" | "anthropic";
+  description: string;
+}
+
+export const MODELS: ModelOption[] = [
+  { id: "deepseek-chat", label: "DeepSeek V3", provider: "deepseek", description: "性价比高，速度快" },
+  { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", provider: "anthropic", description: "质量高，适合复杂任务" },
+];
+
+export const DEFAULT_MODEL: ModelId = "deepseek-chat";
 const DEFAULT_MAX_TOKENS = 1500;
 
 export interface ChatOptions {
   system?: string;
   history?: Message[];
-  model?: string;
+  model?: ModelId;
   maxTokens?: number;
 }
 
@@ -22,17 +36,16 @@ export interface UsageInfo {
   output_tokens: number;
 }
 
-/** 通用 fetch 封装 */
+// ─── DeepSeek Provider ────────────────────────────────────────────────
+
 async function deepseekFetch(
   body: Record<string, unknown>
 ): Promise<Response> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "未配置 DEEPSEEK_API_KEY。请在 .env.local 中填入有效的 DeepSeek API Key。"
-    );
+    throw new Error("未配置 DEEPSEEK_API_KEY。请在 .env.local 中填入有效的 DeepSeek API Key。");
   }
-  return fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+  return fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -42,41 +55,24 @@ async function deepseekFetch(
   });
 }
 
-export async function chat(
-  userMsg: string,
-  options: ChatOptions = {}
+async function deepseekChat(
+  messages: Message[],
+  maxTokens: number
 ): Promise<{ text: string; usage: UsageInfo }> {
-  const {
-    system,
-    history = [],
-    model = DEFAULT_MODEL,
-    maxTokens = DEFAULT_MAX_TOKENS,
-  } = options;
-
-  const messages: Message[] = [
-    ...(system ? [{ role: "system" as const, content: system }] : []),
-    ...history,
-    { role: "user" as const, content: userMsg },
-  ];
-
   const res = await deepseekFetch({
-    model,
+    model: "deepseek-chat",
     max_tokens: maxTokens,
     messages,
   });
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(
-      `DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`
-    );
+    throw new Error(`DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-
   return {
-    text,
+    text: data.choices?.[0]?.message?.content?.trim() ?? "",
     usage: {
       input_tokens: data.usage?.prompt_tokens ?? 0,
       output_tokens: data.usage?.completion_tokens ?? 0,
@@ -84,29 +80,13 @@ export async function chat(
   };
 }
 
-/**
- * 流式对话（SSE）。返回 ReadableStream<string>，逐步产出 text delta。
- */
-export async function chatStream(
-  userMsg: string,
-  options: ChatOptions & { onUsage?: (usage: UsageInfo) => void } = {}
+async function deepseekChatStream(
+  messages: Message[],
+  maxTokens: number,
+  onUsage?: (usage: UsageInfo) => void
 ): Promise<ReadableStream<string>> {
-  const {
-    system,
-    history = [],
-    model = DEFAULT_MODEL,
-    maxTokens = DEFAULT_MAX_TOKENS,
-    onUsage,
-  } = options;
-
-  const messages: Message[] = [
-    ...(system ? [{ role: "system" as const, content: system }] : []),
-    ...history,
-    { role: "user" as const, content: userMsg },
-  ];
-
   const res = await deepseekFetch({
-    model,
+    model: "deepseek-chat",
     max_tokens: maxTokens,
     messages,
     stream: true,
@@ -114,9 +94,7 @@ export async function chatStream(
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(
-      `DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`
-    );
+    throw new Error(`DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
   }
 
   let inputTokens = 0;
@@ -176,6 +154,227 @@ export async function chatStream(
       }
     },
   });
+}
+
+// ─── Anthropic Provider ──────────────────────────────────────────────
+
+async function anthropicFetch(
+  body: Record<string, unknown>
+): Promise<Response> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("未配置 ANTHROPIC_API_KEY。请在 .env.local 中填入有效的 Anthropic API Key。");
+  }
+  return fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/** 从 messages 中分离 system 和 user/assistant 消息 */
+function splitSystemMessages(messages: Message[]): {
+  system: string | undefined;
+  normal: Message[];
+} {
+  const system = messages.find((m) => m.role === "system")?.content;
+  const normal = messages.filter((m) => m.role !== "system") as {
+    role: "user" | "assistant";
+    content: string;
+  }[];
+  return { system, normal };
+}
+
+async function anthropicChat(
+  messages: Message[],
+  maxTokens: number
+): Promise<{ text: string; usage: UsageInfo }> {
+  const { system, normal } = splitSystemMessages(messages);
+
+  const res = await anthropicFetch({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: maxTokens,
+    ...(system ? { system } : {}),
+    messages: normal,
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Anthropic API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const text = (data.content ?? [])
+    .filter((block: { type: string }) => block.type === "text")
+    .map((block: { text: string }) => block.text)
+    .join("")
+    .trim();
+
+  return {
+    text,
+    usage: {
+      input_tokens: data.usage?.input_tokens ?? 0,
+      output_tokens: data.usage?.output_tokens ?? 0,
+    },
+  };
+}
+
+/**
+ * 读取 Anthropic SSE 流。
+ *
+ * Anthropic 使用 event/data 格式:
+ *   event: content_block_delta
+ *   data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
+ *
+ *   event: message_delta
+ *   data: {"type":"message_delta","...":...,"usage":{"output_tokens":100}}
+ */
+async function anthropicChatStream(
+  messages: Message[],
+  maxTokens: number,
+  onUsage?: (usage: UsageInfo) => void
+): Promise<ReadableStream<string>> {
+  const { system, normal } = splitSystemMessages(messages);
+
+  const res = await anthropicFetch({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: maxTokens,
+    ...(system ? { system } : {}),
+    messages: normal,
+    stream: true,
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Anthropic API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
+  }
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("无法读取响应流");
+
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let currentEvent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("event:")) {
+              currentEvent = trimmed.slice(6).trim();
+            } else if (trimmed.startsWith("data:")) {
+              const data = trimmed.slice(5).trim();
+              if (!data) continue;
+
+              if (currentEvent === "message_start") {
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.message?.usage) {
+                    inputTokens = parsed.message.usage.input_tokens ?? 0;
+                    outputTokens = parsed.message.usage.output_tokens ?? 0;
+                  }
+                } catch { /* ignore */ }
+              } else if (currentEvent === "content_block_delta") {
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.delta?.type === "text_delta" && parsed.delta.text) {
+                    controller.enqueue(parsed.delta.text);
+                  }
+                } catch { /* ignore */ }
+              } else if (currentEvent === "message_delta") {
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.usage) {
+                    outputTokens = parsed.usage.output_tokens ?? outputTokens;
+                  }
+                } catch { /* ignore */ }
+              }
+
+              currentEvent = "";
+            }
+          }
+        }
+
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
+          onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
+        }
+      }
+    },
+    cancel() {
+      reader.cancel();
+      if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
+        onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
+      }
+    },
+  });
+}
+
+// ─── 派发函数 ─────────────────────────────────────────────────────────
+
+export async function chat(
+  userMsg: string,
+  options: ChatOptions = {}
+): Promise<{ text: string; usage: UsageInfo }> {
+  const {
+    system,
+    history = [],
+    model = DEFAULT_MODEL,
+    maxTokens = DEFAULT_MAX_TOKENS,
+  } = options;
+
+  const messages: Message[] = [
+    ...(system ? [{ role: "system" as const, content: system }] : []),
+    ...history,
+    { role: "user" as const, content: userMsg },
+  ];
+
+  if (model.startsWith("claude")) {
+    return anthropicChat(messages, maxTokens);
+  }
+  return deepseekChat(messages, maxTokens);
+}
+
+export async function chatStream(
+  userMsg: string,
+  options: ChatOptions & { onUsage?: (usage: UsageInfo) => void } = {}
+): Promise<ReadableStream<string>> {
+  const {
+    system,
+    history = [],
+    model = DEFAULT_MODEL,
+    maxTokens = DEFAULT_MAX_TOKENS,
+    onUsage,
+  } = options;
+
+  const messages: Message[] = [
+    ...(system ? [{ role: "system" as const, content: system }] : []),
+    ...history,
+    { role: "user" as const, content: userMsg },
+  ];
+
+  if (model.startsWith("claude")) {
+    return anthropicChatStream(messages, maxTokens, onUsage);
+  }
+  return deepseekChatStream(messages, maxTokens, onUsage);
 }
 
 /**

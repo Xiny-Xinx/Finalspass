@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { chat, chatStream } from "@/lib/claude";
+import { chat, chatStream, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_CHAT_HISTORY, MAX_QA_CONTEXT_CHARS } from "@/lib/constants";
 import { withQuota } from "@/lib/quota-guard";
@@ -23,6 +23,7 @@ const requestSchema = z.object({
   mode: z.enum(["qa", "detail"]).optional().default("qa"),
   stream: z.boolean().optional().default(false),
   memories: z.array(memorySchema).optional().default([]),
+  model: z.string().optional().default(DEFAULT_MODEL),
 });
 
 const DETAIL_SYSTEM =
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
   try {
     const guard = await withQuota(req);
     const body = await req.json();
-    const { question, context, history, mode, stream, memories } = requestSchema.parse(body);
+    const { question, context, history, mode, stream, memories, model } = requestSchema.parse(body);
 
     const system = buildSystem(mode, context, memories);
 
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       const readable = await chatStream(question, {
         system,
         history: trimmedHistory,
+        model: model as ModelId,
         onUsage(usage) {
           // 流结束后自动扣除 tokens
           guard.deduct(usage.input_tokens + usage.output_tokens);
@@ -83,6 +85,7 @@ export async function POST(req: NextRequest) {
     const { text: answer, usage } = await chat(question, {
       system,
       history: trimmedHistory,
+      model: model as ModelId,
     });
 
     // 自动扣除 tokens

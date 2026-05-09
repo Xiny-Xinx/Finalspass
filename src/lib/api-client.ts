@@ -3,6 +3,8 @@
  * 统一处理 JSON 解析、错误窄化、AbortSignal 透传。
  */
 
+import { DEFAULT_MODEL, type ModelId } from "@/lib/claude";
+
 interface FetchJsonOptions {
   signal?: AbortSignal;
 }
@@ -67,9 +69,9 @@ export interface QuizQuestion {
 
 export function extractCards(
   content: string,
-  options?: FetchJsonOptions
+  options?: FetchJsonOptions & { model?: ModelId }
 ): Promise<{ cards: Card[] }> {
-  return postJson("/api/extract", { content }, options);
+  return postJson("/api/extract", { content, model: options?.model ?? DEFAULT_MODEL }, options);
 }
 
 export function askQuestion(
@@ -79,10 +81,11 @@ export function askQuestion(
     history?: ChatMessage[];
     mode?: "qa" | "detail";
     memories?: MemoryRef[];
+    model?: ModelId;
   },
   options?: FetchJsonOptions
 ): Promise<{ answer: string }> {
-  return postJson("/api/chat", payload, options);
+  return postJson("/api/chat", { ...payload, model: payload.model ?? DEFAULT_MODEL }, options);
 }
 
 export function generateQuiz(
@@ -90,10 +93,11 @@ export function generateQuiz(
     content: string;
     count: number;
     type: "mixed" | "choice" | "judge";
+    model?: ModelId;
   },
   options?: FetchJsonOptions
 ): Promise<{ questions: QuizQuestion[] }> {
-  return postJson("/api/quiz", payload, options);
+  return postJson("/api/quiz", { ...payload, model: payload.model ?? DEFAULT_MODEL }, options);
 }
 
 /**
@@ -107,6 +111,7 @@ export function askQuestionStream(
     history?: ChatMessage[];
     mode?: "qa" | "detail";
     memories?: MemoryRef[];
+    model?: ModelId;
   },
   options?: FetchJsonOptions
 ): { stream: Promise<ReadableStream<string>>; abort: () => void } {
@@ -115,7 +120,7 @@ export function askQuestionStream(
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, stream: true }),
+      body: JSON.stringify({ ...payload, model: payload.model ?? DEFAULT_MODEL, stream: true }),
       signal: options?.signal ?? ctrl.signal,
     });
 

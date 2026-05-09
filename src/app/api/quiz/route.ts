@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { chat, parseJsonFromLLM } from "@/lib/claude";
+import { chat, parseJsonFromLLM, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_QUIZ_CHARS } from "@/lib/constants";
 import { withQuota } from "@/lib/quota-guard";
@@ -9,6 +9,7 @@ const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
   count: z.number().int().min(1).max(20).optional().default(5),
   type: z.enum(["mixed", "choice", "judge"]).optional().default("mixed"),
+  model: z.string().optional().default(DEFAULT_MODEL),
 });
 
 const questionSchema = z.object({
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   try {
     const guard = await withQuota(req);
     const body = await req.json();
-    const { content, count, type } = requestSchema.parse(body);
+    const { content, count, type, model } = requestSchema.parse(body);
 
     const lang = detectLang(content);
     const isZh = lang === "zh";
@@ -85,7 +86,7 @@ Return strictly the following JSON with no other text:
 Course material:
 ${content.slice(0, MAX_QUIZ_CHARS)}`;
 
-    const { text: raw, usage } = await chat(prompt);
+    const { text: raw, usage } = await chat(prompt, { model: model as ModelId });
     const parsed = parseJsonFromLLM(raw);
     const data = responseSchema.parse(parsed);
 

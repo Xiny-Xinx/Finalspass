@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { chat, parseJsonFromLLM } from "@/lib/claude";
+import { chat, parseJsonFromLLM, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_EXTRACT_CHARS } from "@/lib/constants";
 import { withQuota } from "@/lib/quota-guard";
 
 const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
+  model: z.string().optional().default(DEFAULT_MODEL),
 });
 
 const responseSchema = z.object({
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   try {
     const guard = await withQuota(req);
     const body = await req.json();
-    const { content } = requestSchema.parse(body);
+    const { content, model } = requestSchema.parse(body);
 
     const lang = detectLang(content);
     const langInstruction =
@@ -52,7 +53,7 @@ ${langInstruction}
 ${lang === "zh" ? "课件内容：" : "Course material:"}
 ${content.slice(0, MAX_EXTRACT_CHARS)}`;
 
-    const { text: raw, usage } = await chat(prompt);
+    const { text: raw, usage } = await chat(prompt, { model: model as ModelId });
     const parsed = parseJsonFromLLM(raw);
     const data = responseSchema.parse(parsed);
 
