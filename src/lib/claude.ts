@@ -1,24 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk";
+/**
+ * DeepSeek API 封装（OpenAI 兼容格式）
+ *
+ * 使用 fetch 直连 api.deepseek.com，无需额外 SDK。
+ */
 
-export type Message = { role: "user" | "assistant"; content: string };
+export type Message = { role: "user" | "assistant" | "system"; content: string };
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+const DEEPSEEK_BASE = "https://api.deepseek.com";
+const DEFAULT_MODEL = "deepseek-chat";
 const DEFAULT_MAX_TOKENS = 1500;
-
-let cachedClient: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey.startsWith("sk-ant-api03-xxxxxxxx")) {
-    throw new Error(
-      "未配置 ANTHROPIC_API_KEY。请在 .env.local 中填入有效的 Claude API Key。"
-    );
-  }
-  if (!cachedClient) {
-    cachedClient = new Anthropic({ apiKey });
-  }
-  return cachedClient;
-}
 
 export interface ChatOptions {
   system?: string;
@@ -32,6 +22,26 @@ export interface UsageInfo {
   output_tokens: number;
 }
 
+/** 通用 fetch 封装 */
+async function deepseekFetch(
+  body: Record<string, unknown>
+): Promise<Response> {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "未配置 DEEPSEEK_API_KEY。请在 .env.local 中填入有效的 DeepSeek API Key。"
+    );
+  }
+  return fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function chat(
   userMsg: string,
   options: ChatOptions = {}
@@ -43,28 +53,39 @@ export async function chat(
     maxTokens = DEFAULT_MAX_TOKENS,
   } = options;
 
-  const client = getClient();
-  const messages = [...history, { role: "user" as const, content: userMsg }];
+  const messages: Message[] = [
+    ...(system ? [{ role: "system" as const, content: system }] : []),
+    ...history,
+    { role: "user" as const, content: userMsg },
+  ];
 
-  const res = await client.messages.create({
+  const res = await deepseekFetch({
     model,
     max_tokens: maxTokens,
-    ...(system ? { system } : {}),
     messages,
   });
 
-  const text = res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(
+      `DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`
+    );
+  }
 
-  return { text, usage: res.usage };
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content?.trim() ?? "";
+
+  return {
+    text,
+    usage: {
+      input_tokens: data.usage?.prompt_tokens ?? 0,
+      output_tokens: data.usage?.completion_tokens ?? 0,
+    },
+  };
 }
 
 /**
- * 流式对话（SSE）。返回一个 ReadableStream<string>，每次 yield 一个 text delta。
- * 通过 onUsage 回调返回精确的 token 消耗。
+ * 流式对话（SSE）。返回 ReadableStream<string>，逐步产出 text delta。
  */
 export async function chatStream(
   userMsg: string,
@@ -78,37 +99,67 @@ export async function chatStream(
     onUsage,
   } = options;
 
-  const client = getClient();
-  const messages = [...history, { role: "user" as const, content: userMsg }];
+  const messages: Message[] = [
+    ...(system ? [{ role: "system" as const, content: system }] : []),
+    ...history,
+    { role: "user" as const, content: userMsg },
+  ];
 
-  const stream = await client.messages.create({
+  const res = await deepseekFetch({
     model,
     max_tokens: maxTokens,
-    ...(system ? { system } : {}),
     messages,
     stream: true,
   });
 
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(
+      `DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`
+    );
+  }
+
   let inputTokens = 0;
   let outputTokens = 0;
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("无法读取响应流");
 
   return new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of stream) {
-          if (event.type === "message_start") {
-            inputTokens = event.message.usage.input_tokens;
-          }
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(event.delta.text);
-          }
-          if (event.type === "message_delta") {
-            outputTokens = event.usage.output_tokens;
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith("data: ")) continue;
+            const data = trimmed.slice(6);
+            if (data === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta;
+              if (delta?.content) {
+                controller.enqueue(delta.content);
+              }
+              if (parsed.usage) {
+                inputTokens = parsed.usage.prompt_tokens ?? inputTokens;
+                outputTokens = parsed.usage.completion_tokens ?? outputTokens;
+              }
+            } catch {
+              // 忽略解析失败的 chunk
+            }
           }
         }
+
         controller.close();
       } catch (err) {
         controller.error(err);
@@ -119,7 +170,7 @@ export async function chatStream(
       }
     },
     cancel() {
-      // 客户端断开时仍然上报已消耗的 token（input 已确定，output 可能为 0）
+      reader.cancel();
       if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
         onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
       }
@@ -129,13 +180,10 @@ export async function chatStream(
 
 /**
  * 从 LLM 输出中稳健地抽取 JSON。
- * 处理 ```json 包裹、前后多余文字、首尾不平衡等常见问题。
  */
 export function parseJsonFromLLM<T = unknown>(raw: string): T {
-  // 去掉 markdown 代码围栏
   let s = raw.replace(/```(?:json)?/gi, "").trim();
 
-  // 截取第一个 { 到最后一个 } 之间的内容(LLM 偶尔会前后多说一句话)
   const first = s.indexOf("{");
   const last = s.lastIndexOf("}");
   if (first !== -1 && last !== -1 && last > first) {

@@ -18,7 +18,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              "connect-src 'self' https://api.anthropic.com",
+              "connect-src 'self' https://api.deepseek.com",
               "frame-src https://vercel.live",
               "base-uri 'self'",
             ].join("; "),
