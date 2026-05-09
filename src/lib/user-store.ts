@@ -131,10 +131,10 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const id = await redis.get<string>(`user:email:${email}`);
   if (!id) return null;
 
-  const raw = await redis.get<string>(`user:${id}`);
+  const raw = await redis.get<any>(`user:${id}`);
   if (!raw) return null;
 
-  return JSON.parse(raw) as User;
+  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
 }
 
 /** 根据 ID 查找用户（自动同步原子余额 key） */
@@ -142,10 +142,10 @@ export async function getUserById(id: string): Promise<User | null> {
   const redis = await getRedis();
   if (!redis) return null;
 
-  const raw = await redis.get<string>(`user:${id}`);
+  const raw = await redis.get<any>(`user:${id}`);
   if (!raw) return null;
 
-  const user = JSON.parse(raw) as User;
+  const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
 
   // 从原子余额 key 同步最新余额
   try {
@@ -241,17 +241,17 @@ export async function addUserBalance(
     const exists = await redis.exists(balanceKey);
     if (!exists) {
       // 从 user JSON 中读取当前余额
-      const raw = await redis.get<string>(`user:${userId}`);
+      const raw = await redis.get<any>(`user:${userId}`);
       if (!raw) return { ok: false, error: "用户不存在" };
-      const user = JSON.parse(raw) as User;
+      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
       await redis.set(balanceKey, user.balance);
     }
 
     const newBalance = await redis.incrby(balanceKey, tokens);
     // 同时更新 JSON 中的 balance 和 totalPurchased 保持一致性
-    const raw = await redis.get<string>(`user:${userId}`);
+    const raw = await redis.get<any>(`user:${userId}`);
     if (raw) {
-      const user = JSON.parse(raw) as User;
+      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
       user.balance = newBalance;
       user.totalPurchased += tokens;
       await redis.set(`user:${userId}`, JSON.stringify(user));
@@ -321,9 +321,9 @@ export async function deductUserBalance(
     }
 
     // 同步更新 user JSON
-    const raw = await redis.get<string>(`user:${userId}`);
+    const raw = await redis.get<any>(`user:${userId}`);
     if (raw) {
-      const user = JSON.parse(raw) as User;
+      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
       user.balance = newBalance;
       await redis.set(`user:${userId}`, JSON.stringify(user));
     }
