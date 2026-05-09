@@ -89,7 +89,15 @@ export async function createCheckout(
     if (!res.ok) {
       const errText = await res.text();
       console.error("[LS] createCheckout 失败:", res.status, errText);
-      return { error: `创建支付会话失败 (${res.status})` };
+      // 尝试解析 LS 返回的错误详情
+      let detail = "";
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.errors?.[0]?.detail) detail = errJson.errors[0].detail;
+      } catch {}
+      return {
+        error: `创建支付会话失败 (${res.status}${detail ? `: ${detail}` : ""})`,
+      };
     }
 
     const json = await res.json();
