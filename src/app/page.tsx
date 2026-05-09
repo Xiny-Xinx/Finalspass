@@ -446,41 +446,10 @@ export default function Page() {
               borderRadius: 20,
               padding: "3px 10px",
               whiteSpace: "nowrap",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
             }}
             title={`已用 ${quota.used.toLocaleString()} tokens`}
           >
-            剩余 {(quota.remaining / 1000).toFixed(0)}k/{(quota.limit / 1000).toFixed(0)}k
-            {quota.remaining <= 10000 && (
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch("/api/quota/reset", { method: "POST" });
-                    const data = await res.json();
-                    if (data.success) {
-                      setQuota({ ...quota, used: 0, remaining: quota.limit });
-                      setToast("配额已重置");
-                    }
-                  } catch {
-                    setToast("重置失败");
-                  }
-                }}
-                style={{
-                  background: "var(--accent)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "1px 6px",
-                  fontSize: "0.6rem",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                重置
-              </button>
-            )}
+            {(quota.remaining / 1000).toFixed(0)}k/{(quota.limit / 1000).toFixed(0)}k
           </span>
         )}
 
