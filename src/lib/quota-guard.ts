@@ -25,6 +25,7 @@ import {
   USER_DAILY_CAP,
   GUEST_RPM_LIMIT,
   USER_RPM_LIMIT,
+  TIER_LIMITS,
 } from "./constants";
 
 export type QuotaGuard = Awaited<ReturnType<typeof withQuota>>;
@@ -58,16 +59,27 @@ async function getRedis() {
 /**
  * 检查已登录用户每日 token 消耗上限
  */
+async function getUserDailyCap(userId: string): Promise<number> {
+  try {
+    const user = await getUserById(userId);
+    if (user) {
+      return TIER_LIMITS[user.tier] ?? USER_DAILY_CAP;
+    }
+  } catch { /* 降级使用默认值 */ }
+  return USER_DAILY_CAP;
+}
+
 async function checkUserDailyCap(userId: string): Promise<void> {
   const redis = await getRedis();
   if (!redis) return;
 
+  const cap = await getUserDailyCap(userId);
   const key = `user:daily:${userId}:${dateKey()}`;
   try {
     const used = (await redis.get<number>(key)) ?? 0;
-    if (used >= USER_DAILY_CAP) {
+    if (used >= cap) {
       throw Object.assign(
-        new Error(`今日 Token 消耗已达上限（${USER_DAILY_CAP.toLocaleString()}），请明日再试`),
+        new Error(`今日 Token 消耗已达上限（${cap.toLocaleString()}），升级套餐或明日再试`),
         { statusCode: 429 }
       );
     }

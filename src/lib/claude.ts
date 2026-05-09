@@ -23,6 +23,13 @@ export const MODELS: ModelOption[] = [
   { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", provider: "anthropic", description: "质量高，适合复杂任务" },
 ];
 
+/** 各套餐可用的模型 ID */
+export const TIER_MODELS: Record<string, ModelId[]> = {
+  free: ["deepseek-v4-flash", "deepseek-chat"],
+  pro: ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat", "claude-sonnet-4-20250514"],
+  premium: ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat", "claude-sonnet-4-20250514"],
+};
+
 /** 各模型的详细规格说明 */
 export const MODEL_DETAILS: Record<ModelId, {
   summary: string;

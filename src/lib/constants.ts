@@ -17,7 +17,31 @@ export const MAX_DETAIL_CONTEXT_CHARS = 3000;
 export const MAX_CHAT_HISTORY = 10;
 
 /** 每日 API Token 限额(免费用户)。可通过环境变量 QUOTA_TOKEN_LIMIT 覆盖 */
-export const DAILY_TOKEN_LIMIT = Number(process.env.QUOTA_TOKEN_LIMIT) || 100000;
+export const DAILY_TOKEN_LIMIT = Number(process.env.QUOTA_TOKEN_LIMIT) || 30000;
+
+/** 各套餐的每日限额 */
+export const TIER_LIMITS: Record<string, number> = {
+  free: 30000,
+  pro: 300000,
+  premium: 1000000,
+};
+
+/** 各套餐的价格（美元/月） */
+export const TIER_PRICES: Record<string, number> = {
+  free: 0,
+  pro: 5,
+  premium: 12,
+};
+
+/** 充值包：tokens -> 价格（美元） */
+export const TOP_UP_PACKAGES: { tokens: number; price: number; label: string }[] = [
+  { tokens: 200000, price: 2, label: "20 万" },
+  { tokens: 1000000, price: 8, label: "100 万" },
+  { tokens: 5000000, price: 30, label: "500 万" },
+];
+
+/** 充值包基准价格（美元/百万 tokens） */
+export const TOP_UP_RATE = 8; // $8/百万 tokens
 
 /** Token 重置窗口(小时)。默认 24 小时，可通过环境变量 QUOTA_WINDOW_HOURS 覆盖 */
 export const QUOTA_WINDOW_HOURS = Number(process.env.QUOTA_WINDOW_HOURS) || 24;

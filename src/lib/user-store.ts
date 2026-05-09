@@ -26,6 +26,8 @@ async function getRedis() {
   return redisClient;
 }
 
+export type UserTier = "free" | "pro" | "premium";
+
 export interface User {
   id: string;
   email: string;
@@ -37,6 +39,10 @@ export interface User {
   totalPurchased: number;
   /** 邮箱是否已验证 */
   verified: boolean;
+  /** 套餐等级 */
+  tier: UserTier;
+  /** 套餐到期时间(ISO)，pro/premium 有值，free 为 null */
+  tierExpiresAt: string | null;
 }
 
 export interface PublicUser {
@@ -46,6 +52,8 @@ export interface PublicUser {
   balance: number;
   totalPurchased: number;
   verified: boolean;
+  tier: UserTier;
+  tierExpiresAt: string | null;
 }
 
 function toPublic(user: User): PublicUser {
@@ -56,6 +64,8 @@ function toPublic(user: User): PublicUser {
     balance: user.balance,
     totalPurchased: user.totalPurchased,
     verified: user.verified,
+    tier: user.tier,
+    tierExpiresAt: user.tierExpiresAt,
   };
 }
 
@@ -91,6 +101,8 @@ export async function createUser(
     balance: 0,
     totalPurchased: 0,
     verified: false,
+    tier: "free",
+    tierExpiresAt: null,
   };
 
   // 使用 multi 保证原子性
@@ -227,6 +239,39 @@ export async function addUserBalance(
     return { ok: true, balance: newBalance };
   } catch {
     return { ok: false, error: "操作失败" };
+  }
+}
+
+/** 设置用户套餐等级 */
+export async function setUserTier(
+  userId: string,
+  tier: UserTier,
+  expiresAt: string | null
+): Promise<boolean> {
+  const user = await getUserById(userId);
+  if (!user) return false;
+  user.tier = tier;
+  user.tierExpiresAt = expiresAt;
+  return saveUser(user);
+}
+
+/**
+ * 检查套餐是否已过期，过期则自动降级为免费版
+ * 在每次获取用户信息时调用
+ */
+export async function checkTierExpiry(userId: string): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user) return;
+  if (user.tier === "free" || !user.tierExpiresAt) return;
+
+  const now = new Date();
+  const expiresAt = new Date(user.tierExpiresAt);
+  if (now >= expiresAt) {
+    const oldTier = user.tier;
+    user.tier = "free";
+    user.tierExpiresAt = null;
+    await saveUser(user);
+    console.log(`[tier] 套餐到期降级 userId=${userId} 旧等级=${oldTier}`);
   }
 }
 

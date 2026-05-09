@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
-import { getUserById } from "@/lib/user-store";
+import { getUserById, checkTierExpiry } from "@/lib/user-store";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ user: null });
   }
+
+  // 检查套餐是否到期
+  await checkTierExpiry(auth.userId);
 
   const user = await getUserById(auth.userId);
   if (!user) {
@@ -21,6 +24,8 @@ export async function GET(req: Request) {
       balance: user.balance,
       totalPurchased: user.totalPurchased,
       verified: user.verified,
+      tier: user.tier,
+      tierExpiresAt: user.tierExpiresAt,
     },
   });
 }

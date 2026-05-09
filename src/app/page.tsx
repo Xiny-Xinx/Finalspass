@@ -12,7 +12,7 @@ import { extractCards, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY } from "@/lib/constants";
 import { saveSession, listSessions, loadSession, deleteSession, clearAllSessions } from "@/lib/store";
 import type { SessionMeta } from "@/lib/store";
-import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
+import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, TIER_MODELS, type ModelId } from "@/lib/claude";
 
 type Stage = "upload" | "processing" | "results";
 type Tab = "cards" | "qa" | "quiz";
@@ -29,6 +29,8 @@ interface QuotaInfo {
   remaining: number;
   resetDate: string;
   enabled: boolean;
+  tier?: string;
+  isLoggedIn?: boolean;
 }
 
 const TABS: ReadonlyArray<readonly [Tab, string]> = [
@@ -254,6 +256,10 @@ export default function Page() {
           if (data.isLoggedIn && data.balance !== undefined) {
             setUserEmail(data.email || null);
           }
+          // 根据套餐限制可用模型（免费用户只能使用偏低性能的模型）
+          const currentTier = data.tier ?? "free";
+          const allowedModels = TIER_MODELS[currentTier] ?? TIER_MODELS.free;
+          setModel((prev) => allowedModels.includes(prev) ? prev : allowedModels[0]);
         }
       })
       .catch(() => {});
@@ -808,13 +814,16 @@ export default function Page() {
                           切换 AI 模型
                         </div>
                         {MODELS.map((m) => {
+                          const currentTier = quota?.tier ?? "free";
+                          const allowedModels = TIER_MODELS[currentTier] ?? TIER_MODELS.free;
+                          const isAllowed = allowedModels.includes(m.id);
                           const active = model === m.id;
                           const detail = MODEL_DETAILS[m.id];
                           return (
                             <button
                               key={m.id}
                               type="button"
-                              onClick={() => { setModel(m.id); setModelPopoverOpen(false); }}
+                              onClick={() => { if (isAllowed) { setModel(m.id); setModelPopoverOpen(false); } }}
                               style={{
                                 width: "100%",
                                 textAlign: "left",
@@ -823,11 +832,12 @@ export default function Page() {
                                 borderBottom: "1px solid var(--border)",
                                 background: active ? "var(--accent-subtle)" : "transparent",
                                 padding: "10px 14px",
-                                cursor: "pointer",
+                                cursor: isAllowed ? "pointer" : "not-allowed",
+                                opacity: isAllowed ? 1 : 0.45,
                                 transition: "background .1s",
                               }}
-                              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--accent-glow)"; }}
-                              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                              onMouseEnter={(e) => { if (!active && isAllowed) e.currentTarget.style.background = "var(--accent-glow)"; }}
+                              onMouseLeave={(e) => { if (!active && isAllowed) e.currentTarget.style.background = "transparent"; }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                                 <span style={{
@@ -855,9 +865,14 @@ export default function Page() {
                                     ✓
                                   </span>
                                 )}
+                                {!isAllowed && !active && (
+                                  <span style={{ marginLeft: "auto", fontSize: "0.6rem", color: "var(--accent)", fontFamily: "monospace" }}>
+                                    🔒 升级可用
+                                  </span>
+                                )}
                               </div>
-                              <div style={{ fontSize: "0.68rem", color: "var(--muted)", lineHeight: 1.5 }}>
-                                {detail?.summary}
+                              <div style={{ fontSize: "0.68rem", color: isAllowed ? "var(--muted)" : "var(--accent)", lineHeight: 1.5 }}>
+                                {isAllowed ? detail?.summary : "升级套餐即可使用此模型"}
                               </div>
                             </button>
                           );

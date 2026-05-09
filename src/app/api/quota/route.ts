@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getQuota, getClientIP } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/quota-guard";
-import { getUserById } from "@/lib/user-store";
-import { USER_DAILY_CAP, GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT } from "@/lib/constants";
+import { getUserById, checkTierExpiry } from "@/lib/user-store";
+import { USER_DAILY_CAP, GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT, TIER_LIMITS } from "@/lib/constants";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis() {
@@ -25,6 +25,8 @@ export async function GET(req: Request) {
     const auth = getAuthUser(req);
 
     if (auth) {
+      // 检查套餐是否到期，到期自动降级
+      await checkTierExpiry(auth.userId);
       const user = await getUserById(auth.userId);
       if (!user) {
         return NextResponse.json({ error: "用户不存在" }, { status: 401 });
@@ -39,6 +41,9 @@ export async function GET(req: Request) {
         dailyUsed = (await redis.get<number>(`user:daily:${auth.userId}:${dateKey}`)) ?? 0;
       }
 
+      const tier = user.tier ?? "free";
+      const tierLimit = TIER_LIMITS[tier] ?? USER_DAILY_CAP;
+
       return NextResponse.json({
         isLoggedIn: true,
         // 兼容前端 QuotaInfo 接口
@@ -52,8 +57,10 @@ export async function GET(req: Request) {
         totalPurchased: user.totalPurchased,
         email: user.email,
         verified: user.verified,
-        dailyCap: USER_DAILY_CAP,
+        dailyCap: tierLimit,
         dailyUsed,
+        tier,
+        tierExpiresAt: user.tierExpiresAt,
         rateLimit: USER_RPM_LIMIT,
       });
     }
