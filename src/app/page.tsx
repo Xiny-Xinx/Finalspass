@@ -199,6 +199,8 @@ export default function Page() {
   const [dark, setDark] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const qaRef = useRef<{ focusInput: () => void } | null>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -223,12 +225,18 @@ export default function Page() {
     setDark(cur === "dark");
   }, []);
 
-  // 获取今日配额
+  // 获取今日配额 & 登录状态
   useEffect(() => {
     fetch("/api/quota")
-      .then((r) => r.json() as Promise<QuotaInfo>)
-      .then((data) => {
-        if (typeof data.remaining === "number") setQuota(data);
+      .then((r) => r.json())
+      .then((data: any) => {
+        if (typeof data.remaining === "number") {
+          setQuota(data);
+          setIsLoggedIn(data.isLoggedIn === true);
+          if (data.isLoggedIn && data.balance !== undefined) {
+            setUserEmail(data.email || null);
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -435,6 +443,39 @@ export default function Page() {
           </span>
         </button>
 
+        {/* 用户状态 */}
+        {isLoggedIn ? (
+          <a
+            href="/account"
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--muted)",
+              textDecoration: "none",
+              border: "1.5px solid var(--border)",
+              borderRadius: 20,
+              padding: "3px 10px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {userEmail?.split("@")[0] || "账户"}
+          </a>
+        ) : (
+          <a
+            href="/login"
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--muted)",
+              textDecoration: "none",
+              border: "1.5px solid var(--border)",
+              borderRadius: 20,
+              padding: "3px 10px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            登录
+          </a>
+        )}
+
         {/* 配额显示 */}
         {quota && quota.enabled && (
           <span
@@ -447,9 +488,12 @@ export default function Page() {
               padding: "3px 10px",
               whiteSpace: "nowrap",
             }}
-            title={`已用 ${quota.used.toLocaleString()} tokens`}
+            title={isLoggedIn ? `余额 ${quota.remaining.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
           >
-            {(quota.remaining / 1000).toFixed(0)}k/{(quota.limit / 1000).toFixed(0)}k
+            {isLoggedIn
+              ? `${(quota.remaining / 1000).toFixed(0)}k`
+              : `${(quota.remaining / 1000).toFixed(0)}k/${(quota.limit / 1000).toFixed(0)}k`
+            }
           </span>
         )}
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { chat, parseJsonFromLLM } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_QUIZ_CHARS } from "@/lib/constants";
-import { checkTokenBudget, recordTokens, getClientIP } from "@/lib/rate-limit";
+import { withQuota } from "@/lib/quota-guard";
 
 const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
@@ -31,7 +31,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    await checkTokenBudget(getClientIP(req));
+    const guard = await withQuota(req);
     const body = await req.json();
     const { content, count, type } = requestSchema.parse(body);
 
@@ -56,8 +56,8 @@ ${content.slice(0, MAX_QUIZ_CHARS)}`;
     const parsed = parseJsonFromLLM(raw);
     const data = responseSchema.parse(parsed);
 
-    // 记录 token 消耗
-    recordTokens(getClientIP(req), usage.input_tokens + usage.output_tokens);
+    // 自动扣除 tokens
+    await guard.deduct(usage.input_tokens + usage.output_tokens);
 
     return NextResponse.json({ questions: data.questions });
   } catch (error: unknown) {
