@@ -108,10 +108,19 @@ export async function POST(req: NextRequest) {
 /** 处理新订单（充值与首次订阅） */
 async function handleOrderCreated(event: LsWebhookEvent) {
   const attrs = event.data.attributes;
-  const custom = attrs?.custom;
+  const meta = event.meta;
+
+  // LS 可能在不同位置返回 custom 数据，检查多个位置
+  const custom = attrs?.custom || meta?.custom_data || {};
+
+  console.log("[ls-webhook] order_created 原始数据:", JSON.stringify({
+    meta_custom: meta?.custom_data,
+    attrs_custom: attrs?.custom,
+    attrs_identifier: attrs?.identifier,
+  }));
 
   if (!custom?.out_trade_no) {
-    console.warn("[ls-webhook] 订单缺少 custom 数据");
+    console.warn("[ls-webhook] 订单缺少 custom 数据，无法处理");
     return new Response("OK");
   }
 
