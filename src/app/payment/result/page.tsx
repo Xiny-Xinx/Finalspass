@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 
-type Status = "loading" | "success" | "failed" | "not_found";
+const TIMEOUT_MS = 30000; // 30 秒超时
+
+type Status = "loading" | "success" | "failed" | "not_found" | "timeout";
 
 interface OrderInfo {
   outTradeNo: string;
@@ -24,8 +26,10 @@ function PaymentResultContent() {
   const [countdown, setCountdown] = useState(5);
 
   const outTradeNo = searchParams.get("out_trade_no");
+  const timedOutRef = useRef(false);
 
   const checkOrder = useCallback(async () => {
+    if (timedOutRef.current) return;
     if (!outTradeNo) {
       setStatus("not_found");
       return;
@@ -54,6 +58,15 @@ function PaymentResultContent() {
   useEffect(() => {
     checkOrder();
   }, [checkOrder]);
+
+  // 30 秒超时 — 超过仍未收到 webhook 则引导用户查看账户
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      timedOutRef.current = true;
+      setStatus("timeout");
+    }, TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 倒计时跳转
   useEffect(() => {
@@ -224,6 +237,66 @@ function PaymentResultContent() {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
             >
               返回重试
+            </button>
+          </div>
+        )}
+
+        {status === "timeout" && (
+          <div>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "rgba(250,173,20,0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                fontSize: "2rem",
+                color: "#f59e0b",
+              }}
+            >
+              ⏱
+            </div>
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "0 0 8px" }}>
+              支付确认延迟
+            </h2>
+            <p
+              style={{
+                fontSize: "0.82rem",
+                color: "var(--muted)",
+                margin: "0 0 4px",
+              }}
+            >
+              您的支付已提交成功，但确认通知稍有延迟。
+            </p>
+            <p
+              style={{
+                fontSize: "0.82rem",
+                color: "var(--muted)",
+                margin: "0 0 24px",
+              }}
+            >
+              请前往账户中心查看套餐状态或联系客服。
+            </p>
+            <button
+              onClick={() => router.push("/account")}
+              style={{
+                background: "var(--accent)",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 24px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "opacity .2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+            >
+              查看我的账户
             </button>
           </div>
         )}
