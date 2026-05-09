@@ -7,7 +7,8 @@
  * 使用前在 .env.local 配置：
  *   LS_API_KEY=你的 Lemon Squeezy API Key
  *   LS_STORE_ID=你的店铺 ID
- *   LS_VARIANT_ID=变量定价变体 ID（在 LS 后台创建产品 → 变体 → 启用 variable pricing）
+ *   LS_VARIANT_PRO=Pro 套餐变体 ID
+ *   LS_VARIANT_PREMIUM=Premium 套餐变体 ID
  *   LS_WEBHOOK_SECRET=Webhook 签名密钥
  *   NEXT_PUBLIC_BASE_URL=https://你的域名.com
  */
@@ -20,15 +21,14 @@ function getConfig() {
   return {
     apiKey: process.env.LS_API_KEY || "",
     storeId: process.env.LS_STORE_ID || "",
-    variantId: process.env.LS_VARIANT_ID || "",
     webhookSecret: process.env.LS_WEBHOOK_SECRET || "",
   };
 }
 
-/** 检查 LS 配置是否完整 */
+/** 检查 LS 配置是否完整（仅检查店铺和 API，各套餐 variantId 由对应路由校验） */
 export function isLsConfigured(): boolean {
   const cfg = getConfig();
-  return !!(cfg.apiKey && cfg.storeId && cfg.variantId);
+  return !!(cfg.apiKey && cfg.storeId);
 }
 
 /**
@@ -46,10 +46,9 @@ export async function createCheckout(
   description: string,
   customData: Record<string, string>,
   redirectUrl: string,
-  variantId?: string
+  variantId: string
 ): Promise<{ url: string; checkoutId: string } | { error: string }> {
   const cfg = getConfig();
-  const vId = variantId || cfg.variantId;
 
   const checkoutData: Record<string, unknown> = {
     name,
@@ -80,7 +79,7 @@ export async function createCheckout(
               data: { type: "stores", id: cfg.storeId },
             },
             variant: {
-              data: { type: "variants", id: vId },
+              data: { type: "variants", id: variantId },
             },
           },
         },

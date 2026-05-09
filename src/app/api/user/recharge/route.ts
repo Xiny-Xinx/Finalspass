@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const redirectUrl = `${baseUrl}/payment/result?out_trade_no=${order.outTradeNo}`;
 
-    // 创建 LS Checkout
+    // 创建 LS Checkout（需要先在 LS 后台创建充值专用的 Variable Pricing Variant）
+    const rechargeVariantId = process.env.LS_VARIANT_RECHARGE || "";
     const checkout = await createCheckout(
       Math.round(amount * 100), // 美分
       `FinalsPass 充值 ${tokens.toLocaleString()} tokens`,
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
         tokens: String(tokens),
         out_trade_no: order.outTradeNo,
       },
-      redirectUrl
+      redirectUrl,
+      rechargeVariantId
     );
 
     if ("error" in checkout) {
