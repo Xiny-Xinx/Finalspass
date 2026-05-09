@@ -3,6 +3,7 @@ import { z } from "zod";
 import { chat, chatStream } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_CHAT_HISTORY, MAX_QA_CONTEXT_CHARS } from "@/lib/constants";
+import { checkQuota, getClientIP } from "@/lib/rate-limit";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -49,6 +50,7 @@ ${context.slice(0, MAX_QA_CONTEXT_CHARS)}`;
 
 export async function POST(req: NextRequest) {
   try {
+    await checkQuota(getClientIP(req));
     const body = await req.json();
     const { question, context, history, mode, stream, memories } = requestSchema.parse(body);
 

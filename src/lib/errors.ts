@@ -8,8 +8,12 @@ export function getErrorMessage(error: unknown): string {
 
 export function errorResponse(error: unknown, status = 500): NextResponse {
   const message = getErrorMessage(error);
-  // 在服务端打日志,方便排查;返回给前端的只有错误信息
+  // 支持自定义 statusCode（如配额超限返回 429）
+  const actualStatus =
+    error instanceof Error && (error as any).statusCode
+      ? (error as any).statusCode
+      : status;
   // eslint-disable-next-line no-console
   console.error("[api]", message, error);
-  return NextResponse.json({ error: message }, { status });
+  return NextResponse.json({ error: message }, { status: actualStatus });
 }

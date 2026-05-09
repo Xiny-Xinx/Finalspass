@@ -21,6 +21,14 @@ interface PersistedState {
   cards: Card[];
 }
 
+interface QuotaInfo {
+  used: number;
+  limit: number;
+  remaining: number;
+  resetDate: string;
+  enabled: boolean;
+}
+
 const TABS: ReadonlyArray<readonly [Tab, string]> = [
   ["cards", "📋 知识卡片"],
   ["qa", "💬 AI 问答"],
@@ -190,6 +198,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [dark, setDark] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const qaRef = useRef<{ focusInput: () => void } | null>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
@@ -212,6 +221,16 @@ export default function Page() {
     const el = document.documentElement;
     const cur = el.getAttribute("data-theme");
     setDark(cur === "dark");
+  }, []);
+
+  // 获取今日配额
+  useEffect(() => {
+    fetch("/api/quota")
+      .then((r) => r.json() as Promise<QuotaInfo>)
+      .then((data) => {
+        if (typeof data.remaining === "number") setQuota(data);
+      })
+      .catch(() => {});
   }, []);
 
   // 页面标题联动: 上传文件后显示文件名
@@ -415,6 +434,24 @@ export default function Page() {
             {dark ? "亮色" : "暗色"}
           </span>
         </button>
+
+        {/* 配额显示 */}
+        {quota && quota.enabled && (
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.65rem",
+              color: quota.remaining <= 3 ? "var(--accent)" : "var(--muted)",
+              border: `1.5px solid ${quota.remaining <= 3 ? "var(--accent)" : "var(--border)"}`,
+              borderRadius: 20,
+              padding: "3px 10px",
+              whiteSpace: "nowrap",
+            }}
+            title={`今日已用 ${quota.used} 次，${quota.resetDate} 重置`}
+          >
+            剩余 {quota.remaining}/{quota.limit} 次
+          </span>
+        )}
 
         {stage === "results" && (
           <button

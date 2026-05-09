@@ -3,6 +3,7 @@ import { z } from "zod";
 import { chat, parseJsonFromLLM } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_EXTRACT_CHARS } from "@/lib/constants";
+import { checkQuota, getClientIP } from "@/lib/rate-limit";
 
 const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
@@ -21,6 +22,7 @@ const responseSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await checkQuota(getClientIP(req));
     const body = await req.json();
     const { content } = requestSchema.parse(body);
 

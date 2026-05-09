@@ -3,6 +3,7 @@ import { z } from "zod";
 import { chat, parseJsonFromLLM } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_QUIZ_CHARS } from "@/lib/constants";
+import { checkQuota, getClientIP } from "@/lib/rate-limit";
 
 const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
@@ -30,6 +31,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    await checkQuota(getClientIP(req));
     const body = await req.json();
     const { content, count, type } = requestSchema.parse(body);
 
