@@ -50,8 +50,8 @@ export async function GET(req: Request) {
         isLoggedIn: true,
         // 兼容前端 QuotaInfo 接口
         used: dailyUsed,
-        limit: user.balance,
-        remaining: user.balance,
+        limit: tierLimit,
+        remaining: Math.max(0, tierLimit - dailyUsed),
         resetDate: dateKey,
         enabled: true,
         // 真实数据

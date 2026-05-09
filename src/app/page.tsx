@@ -540,7 +540,7 @@ export default function Page() {
                 padding: "3px 10px",
                 whiteSpace: "nowrap",
               }}
-              title={isLoggedIn ? `余额 ${quota.remaining.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
+              title={isLoggedIn ? `今日剩余 ${quota.remaining.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
             >
               {isLoggedIn
                 ? `${(quota.remaining / 1000).toFixed(0)}k`
