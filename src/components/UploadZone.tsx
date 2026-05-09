@@ -116,21 +116,22 @@ export default function UploadZone({ onFile }: UploadZoneProps) {
           style={{
             marginTop: 20,
             display: "inline-block",
-            background: "var(--ink)",
-            color: "var(--paper)",
+            background: "var(--accent)",
+            color: "#fff",
             padding: "10px 28px",
             borderRadius: "var(--radius-md)",
             fontSize: "0.84rem",
             fontFamily: "monospace",
             letterSpacing: "0.04em",
             transition: "background .2s, transform .2s",
+            boxShadow: "0 2px 8px rgba(37, 99, 235, 0.2)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--accent)";
-            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.background = "var(--accent-hover)";
+            e.currentTarget.style.transform = "translateY(-2px)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "var(--ink)";
+            e.currentTarget.style.background = "var(--accent)";
             e.currentTarget.style.transform = "translateY(0)";
           }}
         >

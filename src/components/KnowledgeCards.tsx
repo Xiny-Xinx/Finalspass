@@ -77,7 +77,7 @@ export default function KnowledgeCards({
             aria-label="搜索知识点"
             style={{
               width: "100%",
-              border: "1.5px solid var(--border)",
+              border: "1px solid var(--border)",
               borderRadius: 6,
               padding: "8px 12px 8px 36px",
               fontSize: "0.82rem",
@@ -118,7 +118,7 @@ export default function KnowledgeCards({
           title="导出 Markdown"
           style={{
             background: "none",
-            border: "1.5px solid var(--border)",
+            border: "1px solid var(--border)",
             borderRadius: "var(--radius-sm)",
             padding: "5px 10px",
             fontSize: "0.73rem",
@@ -131,8 +131,8 @@ export default function KnowledgeCards({
             transition: "all .2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--ink)";
-            e.currentTarget.style.color = "var(--ink)";
+            e.currentTarget.style.borderColor = "var(--accent)";
+            e.currentTarget.style.color = "var(--accent)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = "var(--border)";
@@ -177,7 +177,7 @@ export default function KnowledgeCards({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
             gap: 14,
           }}
         >
@@ -213,7 +213,7 @@ function CardItem({ card, index, onClick }: CardItemProps) {
         textAlign: "left",
         font: "inherit",
         background: "var(--card)",
-        border: "1.5px solid var(--border)",
+        border: "1px solid var(--card-border)",
         borderRadius: 8,
         padding: "18px 18px 14px",
         position: "relative",

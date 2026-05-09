@@ -80,7 +80,7 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
   const pct = questions.length > 0 ? (answered / questions.length) * 100 : 0;
 
   const selectStyle: React.CSSProperties = {
-    border: "1.5px solid var(--border)",
+    border: "1px solid var(--border)",
     borderRadius: "var(--radius-sm)",
     padding: "6px 10px",
     fontSize: "0.8rem",
@@ -253,7 +253,7 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
           key={qi}
           style={{
             background: "var(--card)",
-            border: "1.5px solid var(--border)",
+            border: "1px solid var(--card-border)",
             borderRadius: 8,
             padding: "20px 24px",
             marginBottom: 16,
@@ -323,7 +323,7 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
                   textAlign: "left",
                   font: "inherit",
                   padding: "10px 14px",
-                  border: `1.5px solid ${bc}`,
+                  border: `1px solid ${bc}`,
                   borderRadius: 6,
                   marginBottom: 8,
                   display: "flex",
@@ -343,7 +343,7 @@ export default function QuizTab({ pptContent, fileName }: QuizTabProps) {
                     width: 22,
                     height: 22,
                     borderRadius: "50%",
-                    border: "1.5px solid currentColor",
+                    border: "1px solid currentColor",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

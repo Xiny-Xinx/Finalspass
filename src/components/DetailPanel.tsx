@@ -153,7 +153,7 @@ export default function DetailPanel({
             aria-label="关闭"
             style={{
               background: "none",
-              border: "1.5px solid var(--border)",
+              border: "1px solid var(--border)",
               borderRadius: 4,
               width: 32,
               height: 32,
@@ -163,6 +163,15 @@ export default function DetailPanel({
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              transition: "all .2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "inherit";
             }}
           >
             ✕
@@ -215,7 +224,7 @@ export default function DetailPanel({
               onClick={() => fetchDetail()}
               style={{
                 background: "none",
-                border: "1.5px solid var(--accent)",
+                border: "1px solid var(--accent)",
                 color: "var(--accent)",
                 padding: "4px 14px",
                 borderRadius: 4,

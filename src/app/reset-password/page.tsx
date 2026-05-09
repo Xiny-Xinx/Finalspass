@@ -102,7 +102,7 @@ function ResetPasswordForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "transparent", color: "inherit", fontSize: "1rem", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "inherit", fontSize: "1rem", boxSizing: "border-box" }}
           />
         </div>
         <button type="submit" disabled={loading} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", fontSize: "1rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, marginTop: 8 }}>

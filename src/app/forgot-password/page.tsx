@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
                 width: "100%",
                 padding: "10px 12px",
                 borderRadius: 8,
-                border: "1.5px solid var(--border)",
+                border: "1px solid var(--border)",
                 background: "transparent",
                 color: "inherit",
                 fontSize: "1rem",

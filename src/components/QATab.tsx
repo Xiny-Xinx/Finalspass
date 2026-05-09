@@ -340,7 +340,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
                       alignSelf: "flex-start" as const,
                       background: "var(--card)",
                       color: "var(--ink)",
-                      border: "1.5px solid var(--border)",
+                      border: "1px solid var(--border)",
                     }}
                   >
                     {m.streaming && !m.content ? (
@@ -377,7 +377,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
                           onClick={() => retry(i)}
                           style={{
                             background: "none",
-                            border: "1.5px solid var(--accent)",
+                            border: "1px solid var(--accent)",
                             color: "var(--accent)",
                             padding: "4px 14px",
                             borderRadius: 4,
@@ -433,7 +433,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
         style={{
           display: "flex",
           gap: 10,
-          borderTop: "1.5px solid var(--border)",
+          borderTop: "1px solid var(--border)",
           paddingTop: 16,
           alignItems: "flex-end",
         }}
@@ -453,7 +453,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
           }}
           style={{
             flex: 1,
-            border: "1.5px solid var(--border)",
+            border: "1px solid var(--border)",
             borderRadius: 6,
             padding: "10px 14px",
             fontSize: "0.85rem",
@@ -463,7 +463,7 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
             minHeight: 44,
             transition: "border-color .2s",
           }}
-          onFocus={(e) => (e.target.style.borderColor = "var(--ink)")}
+          onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
           onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
         />
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -473,8 +473,8 @@ const QATab = forwardRef<QATabHandle, QATabProps>(function QATab(
             disabled={loading || !input.trim()}
             style={{
               background:
-                loading || !input.trim() ? "var(--muted)" : "var(--ink)",
-              color: "var(--paper)",
+                loading || !input.trim() ? "var(--muted)" : "var(--accent)",
+              color: "#fff",
               border: "none",
               padding: "10px 20px",
               borderRadius: 6,

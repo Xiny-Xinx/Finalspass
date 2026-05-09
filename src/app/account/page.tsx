@@ -94,7 +94,7 @@ export default function AccountPage() {
           onClick={handleLogout}
           style={{
             background: "none",
-            border: "1.5px solid var(--border)",
+            border: "1px solid var(--border)",
             borderRadius: 8,
             padding: "6px 14px",
             color: "var(--muted)",
@@ -168,7 +168,7 @@ export default function AccountPage() {
             }}
             style={{
               background: "none",
-              border: "1.5px solid var(--border)",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               padding: "8px 16px",
               color: "inherit",
@@ -201,7 +201,7 @@ export default function AccountPage() {
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,
-                border: `1.5px solid ${rechargeAmount === amount ? "var(--accent)" : "var(--border)"}`,
+                border: `1px solid ${rechargeAmount === amount ? "var(--accent)" : "var(--border)"}`,
                 background: rechargeAmount === amount ? "rgba(0,120,255,0.08)" : "transparent",
                 color: rechargeAmount === amount ? "var(--accent)" : "inherit",
                 cursor: "pointer",
@@ -225,7 +225,7 @@ export default function AccountPage() {
               flex: 1,
               padding: "8px 12px",
               borderRadius: 8,
-              border: "1.5px solid var(--border)",
+              border: "1px solid var(--border)",
               background: "transparent",
               color: "inherit",
               fontSize: "0.9rem",

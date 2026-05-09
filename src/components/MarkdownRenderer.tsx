@@ -95,7 +95,7 @@ function tokenizeMarkdown(text: string): string {
     // 分隔线
     if (/^[-*_]{3,}\s*$/.test(line)) {
       result.push(
-        `<hr style="border:none;border-top:1.5px solid var(--border);margin:12px 0;">`
+        `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">`
       );
       continue;
     }
@@ -173,7 +173,7 @@ export function CopyButton({ text, label = "复制" }: CopyButtonProps) {
         fontFamily: "monospace",
         transition: "color .2s",
       }}
-      onMouseEnter={(e) => { if (!copied) e.currentTarget.style.color = "var(--ink)"; }}
+      onMouseEnter={(e) => { if (!copied) e.currentTarget.style.color = "var(--accent)"; }}
       onMouseLeave={(e) => { if (!copied) e.currentTarget.style.color = "var(--muted)"; }}
     >
       {copied ? "✓ 已复制" : label}
