@@ -12,7 +12,7 @@ import { extractCards, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY } from "@/lib/constants";
 import { saveSession, listSessions, loadSession, deleteSession, clearAllSessions } from "@/lib/store";
 import type { SessionMeta } from "@/lib/store";
-import { MODELS, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
+import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 
 type Stage = "upload" | "processing" | "results";
 type Tab = "cards" | "qa" | "quiz";
@@ -204,6 +204,7 @@ export default function Page() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
   const [model, setModel] = useState<ModelId>(() => {
@@ -276,6 +277,7 @@ export default function Page() {
 
       if (e.key === "Escape") {
         setMenuOpen(false);
+        setModelPopoverOpen(false);
       } else if (e.key === "1") setTab("cards");
       else if (e.key === "2") setTab("qa");
       else if (e.key === "3") setTab("quiz");
@@ -733,8 +735,143 @@ export default function Page() {
                 </button>
               ))}
 
-              {/* 文件信息 pill（靠右） */}
-              <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {/* 模型选择 + 文件信息 pill（靠右） */}
+              <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                {/* 模型选择器（自定义下拉） */}
+                <div style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    onClick={() => setModelPopoverOpen((v) => !v)}
+                    aria-label="选择 AI 模型"
+                    title={MODELS.find(m => m.id === model)?.description ?? ""}
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: "0.68rem",
+                      background: "var(--paper2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 20,
+                      padding: "2px 10px",
+                      color: "var(--accent)",
+                      cursor: "pointer",
+                      outline: "none",
+                      whiteSpace: "nowrap",
+                      transition: "border-color .15s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                  >
+                    {MODELS.find(m => m.id === model)?.label ?? model}
+                    <span style={{ fontSize: "0.55rem", opacity: 0.6 }}>▾</span>
+                  </button>
+
+                  {modelPopoverOpen && (
+                    <>
+                      {/* 遮罩层用来捕获点击关闭 */}
+                      <div
+                        onClick={() => setModelPopoverOpen(false)}
+                        style={{
+                          position: "fixed",
+                          inset: 0,
+                          zIndex: 199,
+                        }}
+                      />
+                      {/* 弹出面板 */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 6px)",
+                          right: 0,
+                          zIndex: 200,
+                          background: "var(--paper)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
+                          boxShadow: "var(--shadow-lg)",
+                          minWidth: 280,
+                          maxWidth: 320,
+                          animation: "fadeUp .15s ease",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: "8px 12px",
+                            borderBottom: "1px solid var(--border)",
+                            fontSize: "0.7rem",
+                            fontFamily: "monospace",
+                            color: "var(--muted)",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          切换 AI 模型
+                        </div>
+                        {MODELS.map((m) => {
+                          const active = model === m.id;
+                          const detail = MODEL_DETAILS[m.id];
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setModel(m.id); setModelPopoverOpen(false); }}
+                              style={{
+                                width: "100%",
+                                textAlign: "left",
+                                font: "inherit",
+                                border: "none",
+                                borderBottom: "1px solid var(--border)",
+                                background: active ? "var(--accent-subtle)" : "transparent",
+                                padding: "10px 14px",
+                                cursor: "pointer",
+                                transition: "background .1s",
+                              }}
+                              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--accent-glow)"; }}
+                              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span style={{
+                                  fontWeight: 600,
+                                  fontSize: "0.82rem",
+                                  color: active ? "var(--accent)" : "var(--ink)",
+                                }}>
+                                  {m.label}
+                                </span>
+                                {detail?.badge && (
+                                  <span style={{
+                                    fontSize: "0.6rem",
+                                    fontFamily: "monospace",
+                                    background: active ? "var(--accent)" : "var(--border)",
+                                    color: active ? "white" : "var(--muted)",
+                                    padding: "1px 6px",
+                                    borderRadius: 8,
+                                    lineHeight: "1.4",
+                                  }}>
+                                    {detail.badge}
+                                  </span>
+                                )}
+                                {active && (
+                                  <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--accent)" }}>
+                                    ✓
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 10, fontSize: "0.65rem", fontFamily: "monospace", color: "var(--muted)", marginBottom: 4 }}>
+                                <span>{detail?.speed}</span>
+                                <span>📐 {detail?.context}</span>
+                              </div>
+                              <div style={{ fontSize: "0.64rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                                <div>{detail?.cost}</div>
+                                <div style={{ marginTop: 1, opacity: 0.75 }}>{detail?.note}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <span
                   style={{
                     fontFamily: "monospace",
@@ -957,44 +1094,6 @@ export default function Page() {
                 gap: 2,
               }}
             >
-              {/* 模型选择 */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 12px",
-                  fontSize: "0.75rem",
-                  color: "var(--muted)",
-                  fontFamily: "monospace",
-                }}
-              >
-                <span>🤖 模型</span>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value as ModelId)}
-                  aria-label="选择 AI 模型"
-                  style={{
-                    flex: 1,
-                    background: "var(--paper2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-sm)",
-                    padding: "4px 6px",
-                    fontSize: "0.72rem",
-                    color: "var(--ink)",
-                    fontFamily: "monospace",
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  {MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* 主题切换 */}
               <button
                 type="button"
