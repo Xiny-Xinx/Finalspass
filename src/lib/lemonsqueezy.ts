@@ -10,6 +10,7 @@
  *   LS_VARIANT_PRO=Pro 套餐变体 ID
  *   LS_VARIANT_PREMIUM=Premium 套餐变体 ID
  *   LS_WEBHOOK_SECRET=Webhook 签名密钥
+ *   LS_TEST_MODE=true          （可选）启用测试模式，可用测试卡号支付不扣款
  *   NEXT_PUBLIC_BASE_URL=https://你的域名.com
  */
 
@@ -65,6 +66,10 @@ export async function createCheckout(
   };
   if (priceCents !== undefined) {
     attributes.custom_price = priceCents;
+  }
+  // 测试模式：设置 LS_TEST_MODE=true 可用测试卡号支付，不产生真实扣款
+  if (process.env.LS_TEST_MODE === "true") {
+    attributes.test_mode = true;
   }
 
   try {
