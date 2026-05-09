@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { Suspense, FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ResetPasswordPage() {
+/** 内部组件：使用 useSearchParams，需要 Suspense 包裹 */
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -43,7 +44,7 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
+      <div>
         <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>密码已重置</h1>
         <p style={{ color: "var(--muted)", marginBottom: 24 }}>请使用新密码重新登录。</p>
         <a
@@ -67,7 +68,7 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
+      <div>
         <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>无效链接</h1>
         <p style={{ color: "var(--muted)" }}>密码重置链接无效，请重新申请。</p>
         <a href="/forgot-password" style={{ color: "var(--accent)", textDecoration: "none" }}>
@@ -78,30 +79,14 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 400,
-        margin: "60px auto",
-        padding: "0 20px",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
+    <div>
       <h1 style={{ fontSize: "1.5rem", marginBottom: 8 }}>设置新密码</h1>
       <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: "0.9rem" }}>
         输入你的新密码。
       </p>
 
       {error && (
-        <p
-          style={{
-            color: "var(--accent)",
-            background: "rgba(255,0,0,0.06)",
-            padding: "8px 12px",
-            borderRadius: 8,
-            fontSize: "0.85rem",
-            marginBottom: 16,
-          }}
-        >
+        <p style={{ color: "var(--accent)", background: "rgba(255,0,0,0.06)", padding: "8px 12px", borderRadius: 8, fontSize: "0.85rem", marginBottom: 16 }}>
           {error}
         </p>
       )}
@@ -117,37 +102,24 @@ export default function ResetPasswordPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1.5px solid var(--border)",
-              background: "transparent",
-              color: "inherit",
-              fontSize: "1rem",
-              boxSizing: "border-box",
-            }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "transparent", color: "inherit", fontSize: "1rem", boxSizing: "border-box" }}
           />
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: "10px 0",
-            borderRadius: 8,
-            border: "none",
-            background: "var(--accent)",
-            color: "#fff",
-            fontSize: "1rem",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.6 : 1,
-            marginTop: 8,
-          }}
-        >
+        <button type="submit" disabled={loading} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", fontSize: "1rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, marginTop: 8 }}>
           {loading ? "重置中…" : "重置密码"}
         </button>
       </form>
+    </div>
+  );
+}
+
+/** 主页面导出：Suspense 包裹 useSearchParams 组件 */
+export default function ResetPasswordPage() {
+  return (
+    <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
+      <Suspense fallback={<p style={{ color: "var(--muted)" }}>加载中…</p>}>
+        <ResetPasswordForm />
+      </Suspense>
     </div>
   );
 }
