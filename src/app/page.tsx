@@ -1187,125 +1187,151 @@ export default function Page() {
             {/* ── 底部用户区 ── */}
             <div
               style={{
-                borderTop: "1px solid var(--border)",
-                padding: "10px 12px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
+                borderTop: "1px solid var(--sidebar-border)",
+                padding: "10px 10px 12px",
               }}
             >
-              {/* 主题切换 */}
-              <button
-                type="button"
-                onClick={() => { toggleTheme(); }}
-                style={{
-                  textAlign: "left",
-                  font: "inherit",
-                  width: "100%",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.8rem",
-                  color: "var(--muted)",
-                  transition: "all .15s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-glow)"; e.currentTarget.style.color = "var(--ink)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted)"; }}
-              >
-                {dark ? "☀️ 切换亮色模式" : "🌙 切换暗色模式"}
-              </button>
+              {/* 用量 */}
+              {quota && quota.enabled && (
+                <div
+                  style={{
+                    padding: "6px 10px 10px",
+                    fontSize: "0.68rem",
+                    fontFamily: "monospace",
+                    color: "var(--muted)",
+                    opacity: 0.7,
+                  }}
+                >
+                  今日 {(quota.used / 1000).toFixed(0)}k / {(quota.limit / 1000).toFixed(0)}k tokens
+                </div>
+              )}
 
-              {/* 账户设置 */}
+              {/* 账户 */}
               <a
                 href={isLoggedIn ? "/account" : "/login"}
                 onClick={() => setMenuOpen(false)}
                 style={{
-                  textAlign: "left",
-                  font: "inherit",
-                  display: "block",
-                  width: "100%",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius-sm)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 10px",
+                  borderRadius: "var(--radius-md)",
                   textDecoration: "none",
-                  fontSize: "0.8rem",
-                  color: "var(--muted)",
-                  transition: "all .15s",
+                  fontSize: "0.82rem",
+                  color: "var(--ink)",
+                  transition: "background .15s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-glow)"; e.currentTarget.style.color = "var(--ink)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
               >
-                👤 {isLoggedIn ? "账户设置" : "登录 / 注册"}
-              </a>
-
-              {/* 隐私政策 & 服务条款 */}
-              <div style={{ display: "flex", gap: 4, padding: "4px 12px" }}>
-                <a
-                  href="/privacy"
-                  onClick={() => setMenuOpen(false)}
-                  style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none" }}
-                >隐私政策</a>
-                <span style={{ fontSize: "0.68rem", color: "var(--border)" }}>·</span>
-                <a
-                  href="/terms"
-                  onClick={() => setMenuOpen(false)}
-                  style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none" }}
-                >服务条款</a>
-                <span style={{ fontSize: "0.68rem", color: "var(--border)" }}>·</span>
-                <a
-                  href="mailto:support@finalspass.top"
-                  onClick={() => setMenuOpen(false)}
-                  style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none" }}
-                >联系客服</a>
-              </div>
-
-              {/* Token 额度 */}
-              {quota && quota.enabled && (
                 <div
                   style={{
-                    padding: "8px 12px",
-                    fontSize: "0.7rem",
-                    fontFamily: "monospace",
-                    color: "var(--muted)",
-                    borderTop: "1px solid var(--border)",
-                    marginTop: 4,
-                    paddingTop: 8,
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    background: "var(--accent-subtle)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.85rem",
+                    color: "var(--accent)",
+                    fontWeight: 600,
+                    flexShrink: 0,
                   }}
                 >
-                  今日已用: {(quota.used / 1000).toFixed(0)}k / {(quota.limit / 1000).toFixed(0)}k tokens
+                  {isLoggedIn && userEmail ? userEmail[0].toUpperCase() : "?"}
                 </div>
-              )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: "0.82rem",
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isLoggedIn ? "账户设置" : "登录 / 注册"}
+                  </div>
+                  {isLoggedIn && userEmail && (
+                    <div
+                      style={{
+                        fontSize: "0.68rem",
+                        color: "var(--muted)",
+                        opacity: 0.7,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {userEmail}
+                    </div>
+                  )}
+                </div>
+              </a>
 
-              {/* 清除历史 */}
-              {sessionList.length > 0 && (
+              {/* 底部工具栏 */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "4px 4px 0",
+                  marginTop: 2,
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm("确定清除所有历史记录？")) {
-                      clearAllSessions();
-                      setSessionList([]);
-                    }
-                  }}
+                  onClick={() => { toggleTheme(); }}
                   style={{
-                    textAlign: "left",
-                    font: "inherit",
-                    width: "100%",
-                    padding: "8px 12px",
-                    borderRadius: "var(--radius-sm)",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    fontSize: "0.78rem",
-                    color: "var(--danger)",
+                    padding: "6px 8px",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.75rem",
+                    color: "var(--muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                     transition: "background .15s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--danger-glow)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                 >
-                  🗑 清除所有历史
+                  {dark ? "☀️" : "🌙"} {dark ? "浅色" : "深色"}
                 </button>
-              )}
+                <div style={{ display: "flex", gap: 2 }}>
+                  <a
+                    href="/privacy"
+                    onClick={() => setMenuOpen(false)}
+                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    隐私
+                  </a>
+                  <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
+                  <a
+                    href="/terms"
+                    onClick={() => setMenuOpen(false)}
+                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    条款
+                  </a>
+                  <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
+                  <a
+                    href="mailto:support@finalspass.top"
+                    onClick={(e) => { e.preventDefault(); setMenuOpen(false); window.location.href = "mailto:support@finalspass.top"; }}
+                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    帮助
+                  </a>
+                </div>
+              </div>
             </div>
           </aside>
         </div>
