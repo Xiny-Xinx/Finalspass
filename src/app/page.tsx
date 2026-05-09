@@ -393,6 +393,7 @@ export default function Page() {
 
       {/* ── 顶栏 ── */}
       <header
+        className="main-header"
         style={{
           padding: "8px 20px",
           borderBottom: "1px solid var(--border)",
@@ -451,9 +452,8 @@ export default function Page() {
         </h1>
 
         <span
+          className="header-badge"
           style={{
-            fontFamily: "monospace",
-            fontSize: "0.6rem",
             color: "var(--muted)",
             letterSpacing: "0.08em",
             whiteSpace: "nowrap",
@@ -581,6 +581,7 @@ export default function Page() {
 
       {/* ── 主体 ── */}
       <main
+        className="main-content"
         style={{
           maxWidth: stage === "upload" || stage === "processing" ? 560 : 1200,
           margin: "0 auto",
@@ -625,6 +626,39 @@ export default function Page() {
 
         {stage === "upload" && (
           <>
+            {/* 新用户引导 */}
+            {sessionList.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  marginBottom: 28,
+                  animation: "fadeUp .35s ease",
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: 700,
+                    margin: "0 0 6px",
+                    fontFamily: "'Noto Serif SC', Georgia, serif",
+                  }}
+                >
+                  欢迎使用 FinalsPass
+                </h2>
+                <p
+                  style={{
+                    fontSize: "0.84rem",
+                    color: "var(--muted)",
+                    margin: 0,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  上传课堂讲义或课件（PDF / PPTX / DOCX）<br />
+                  AI 将自动提取核心知识点，并支持智能问答与练习测验
+                </p>
+              </div>
+            )}
+
             <UploadZone onFile={handleFile} />
 
             {/* 最近文件 */}
@@ -951,6 +985,7 @@ export default function Page() {
           }}
         >
           <aside
+            className="sidebar-aside"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: 300,
@@ -1162,6 +1197,12 @@ export default function Page() {
                   onClick={() => setMenuOpen(false)}
                   style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none" }}
                 >服务条款</a>
+                <span style={{ fontSize: "0.68rem", color: "var(--border)" }}>·</span>
+                <a
+                  href="mailto:support@finalspass.top"
+                  onClick={() => setMenuOpen(false)}
+                  style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none" }}
+                >联系客服</a>
               </div>
 
               {/* Token 额度 */}

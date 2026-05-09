@@ -178,6 +178,36 @@ select:focus {
   transform: translateY(-2px);
 }
 
+/* ── Responsive: mobile ── */
+@media (max-width: 480px) {
+  .main-header {
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+  .main-header h1 {
+    font-size: 1rem !important;
+  }
+  .header-badge {
+    font-size: 0.5rem !important;
+    padding: 1px 6px !important;
+  }
+  .main-content {
+    padding: 24px 14px 40px !important;
+  }
+  .account-nav a, .account-nav button {
+    font-size: 0.7rem !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* ── Sidebar fullscreen on mobile ── */
+@media (max-width: 640px) {
+  .sidebar-aside {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
 /* ── Recent file card (upload page) ── */
 .recent-file-card {
   text-align: left;
