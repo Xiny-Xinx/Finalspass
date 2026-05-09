@@ -23,10 +23,23 @@ const responseSchema = z.object({
   questions: z.array(questionSchema).min(1),
 });
 
+/** 检测内容主体语言 */
+function detectLang(text: string): "zh" | "en" {
+  const cjk = (text.match(/[一-鿿㐀-䶿]/g) || []).length;
+  const latin = (text.match(/[a-zA-Z]/g) || []).length;
+  return cjk > latin ? "zh" : "en";
+}
+
 const TYPE_LABEL: Record<string, string> = {
   mixed: "单选题和判断题混合",
   choice: "单选题",
   judge: "判断题",
+};
+
+const TYPE_LABEL_EN: Record<string, string> = {
+  mixed: "multiple choice and true/false",
+  choice: "multiple choice",
+  judge: "true/false",
 };
 
 export async function POST(req: NextRequest) {
@@ -35,11 +48,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { content, count, type } = requestSchema.parse(body);
 
-    const prompt = `基于以下课件内容,生成 ${count} 道${TYPE_LABEL[type]}练习题。
+    const lang = detectLang(content);
+    const isZh = lang === "zh";
+
+    const prompt = isZh
+      ? `基于以下课件内容，生成 ${count} 道${TYPE_LABEL[type]}练习题。
 
 规则:
-- 单选题:4 个选项(A/B/C/D),answer 字段填写完整选项文字(如 "A.牛顿第一定律")
-- 判断题:选项为 ["正确", "错误"],answer 字段填写 "正确" 或 "错误"
+- 单选题:4 个选项(A/B/C/D)，answer 字段填写完整选项文字(如 "A.牛顿第一定律")
+- 判断题:选项为 ["正确", "错误"],answer 字段填写"正确"或"错误"
 - 每题附 30 字内解析
 - 题目来自课件核心内容,不出偏题
 
@@ -50,6 +67,22 @@ export async function POST(req: NextRequest) {
 ]}
 
 课件内容:
+${content.slice(0, MAX_QUIZ_CHARS)}`
+      : `Based on the following course material, generate ${count} ${TYPE_LABEL_EN[type]} questions.
+
+Rules:
+- Multiple choice: 4 options (A/B/C/D), answer field should contain the full option text (e.g. "A. Newton's First Law")
+- True/false: options are ["True", "False"], answer field should be "True" or "False"
+- Each question must include a brief explanation (≤30 words)
+- Questions must be based on the core content of the material, no off-topic questions
+
+Return strictly the following JSON with no other text:
+{"questions":[
+  {"type":"choice","question":"Question text","options":["A. Option 1","B. Option 2","C. Option 3","D. Option 4"],"answer":"A. Option 1","explanation":"Explanation"},
+  {"type":"judge","question":"Question text","options":["True","False"],"answer":"True","explanation":"Explanation"}
+]}
+
+Course material:
 ${content.slice(0, MAX_QUIZ_CHARS)}`;
 
     const { text: raw, usage } = await chat(prompt);
