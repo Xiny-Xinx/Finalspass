@@ -52,6 +52,9 @@ export default function DetailPanel({
     return () => document.removeEventListener("keydown", trap);
   }, [loading, errored, text]);
 
+  // 检测卡片语言：含中文字符则为中文，否则英文
+  const cardLang: "zh" | "en" = /[一-龥]/.test(card.title + card.summary) ? "zh" : "en";
+
   const fetchDetail = useCallback(
     (signal?: AbortSignal) => {
       setText("");
@@ -59,13 +62,16 @@ export default function DetailPanel({
       setErrored(false);
       setErrorMsg("");
 
+      const question = cardLang === "en"
+        ? `Explain the knowledge point "${card.title}" in detail.\nSummary: ${card.summary}\n\nExcerpt: ${pptContent.slice(0, MAX_DETAIL_CONTEXT_CHARS)}`
+        : `对知识点"${card.title}"进行详细解释。\n概述:${card.summary}\n\n课件节选:${pptContent.slice(0, MAX_DETAIL_CONTEXT_CHARS)}`;
+
       askQuestion(
         {
           mode: "detail",
+          lang: cardLang,
           model,
-          question: `对知识点"${card.title}"进行详细解释。\n概述:${
-            card.summary
-          }\n\n课件节选:${pptContent.slice(0, MAX_DETAIL_CONTEXT_CHARS)}`,
+          question,
         },
         { signal }
       )

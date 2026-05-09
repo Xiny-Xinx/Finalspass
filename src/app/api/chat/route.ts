@@ -24,14 +24,20 @@ const requestSchema = z.object({
   stream: z.boolean().optional().default(false),
   memories: z.array(memorySchema).optional().default([]),
   model: z.string().optional().default(DEFAULT_MODEL),
+  lang: z.enum(["zh", "en"]).optional().default("zh"),
 });
 
-const DETAIL_SYSTEM =
-  `你是课堂知识点讲解助手。请对指定知识点进行详细解释。
+function detailSystem(lang: string): string {
+  if (lang === "en") {
+    return `You are a knowledge point explanation assistant. Explain the given knowledge point in detail.
+Requirements: clear and thorough, covering core concepts, important details, practical significance or examples, 200-350 words, in English. Use Markdown format (bold, lists, etc.).`;
+  }
+  return `你是课堂知识点讲解助手。请对指定知识点进行详细解释。
 要求:深入浅出,包含核心概念、重要细节、实际意义或举例,200-350字,中文,可以用 Markdown 格式(加粗、列表等)。`;
+}
 
-function buildSystem(mode: string, context: string, memories: { question: string; answer: string }[]): string {
-  if (mode === "detail") return DETAIL_SYSTEM;
+function buildSystem(mode: string, context: string, memories: { question: string; answer: string }[], lang: string = "zh"): string {
+  if (mode === "detail") return detailSystem(lang);
 
   let sys = `你是课堂学习助手。基于以下课件内容回答学生问题,简洁准确,必要时举例,用中文回答。
 
@@ -53,9 +59,9 @@ export async function POST(req: NextRequest) {
   try {
     const guard = await withQuota(req);
     const body = await req.json();
-    const { question, context, history, mode, stream, memories, model } = requestSchema.parse(body);
+    const { question, context, history, mode, stream, memories, model, lang } = requestSchema.parse(body);
 
-    const system = buildSystem(mode, context, memories);
+    const system = buildSystem(mode, context, memories, lang);
 
     const trimmedHistory =
       mode === "detail" ? [] : history.slice(-MAX_CHAT_HISTORY);

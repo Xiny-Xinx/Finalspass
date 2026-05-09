@@ -80,6 +80,7 @@ export function askQuestion(
     context?: string;
     history?: ChatMessage[];
     mode?: "qa" | "detail";
+    lang?: "zh" | "en";
     memories?: MemoryRef[];
     model?: ModelId;
   },
