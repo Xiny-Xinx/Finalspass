@@ -209,6 +209,10 @@ export default function Page() {
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportMsg, setSupportMsg] = useState("");
+  const [supportChat, setSupportChat] = useState<{role:"user"|"assistant"; content:string}[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
   const [model, setModel] = useState<ModelId>(() => {
     try {
       const stored = typeof window !== "undefined" ? localStorage.getItem("finalspass-model") : null;
@@ -374,6 +378,28 @@ export default function Page() {
     setMenuOpen(false);
   }, []);
 
+  async function handleSupportSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supportMsg.trim() || supportLoading) return;
+    const q = supportMsg.trim();
+    setSupportMsg("");
+    setSupportChat((prev) => [...prev, { role: "user", content: q }]);
+    setSupportLoading(true);
+    try {
+      const res = await fetch("/api/user/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      const data = await res.json();
+      setSupportChat((prev) => [...prev, { role: "assistant", content: data.reply || "抱歉，暂时无法回复。" }]);
+    } catch {
+      setSupportChat((prev) => [...prev, { role: "assistant", content: "网络错误，请稍后重试。" }]);
+    } finally {
+      setSupportLoading(false);
+    }
+  }
+
   return (
     <ErrorBoundary>
     <div
@@ -451,83 +477,7 @@ export default function Page() {
           FinalsPass
         </h1>
 
-        <span
-          className="header-badge"
-          style={{
-            color: "var(--muted)",
-            letterSpacing: "0.08em",
-            whiteSpace: "nowrap",
-            padding: "2px 8px",
-            borderRadius: 10,
-            background: "var(--accent-subtle)",
-          }}
-        >
-          AI 考前冲刺
-        </span>
-
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          {/* 暗色模式切换（图标版） */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={dark ? "切换亮色模式" : "切换暗色模式"}
-            title={dark ? "切换亮色模式" : "切换暗色模式"}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px",
-              fontSize: "1rem",
-              color: "var(--muted)",
-              borderRadius: 6,
-              transition: "all .2s",
-              lineHeight: 1,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-glow)"; e.currentTarget.style.color = "var(--accent)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted)"; }}
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
-
-          {/* 用户状态 */}
-          {isLoggedIn ? (
-            <a
-              href="/account"
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--muted)",
-                textDecoration: "none",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "3px 10px",
-                whiteSpace: "nowrap",
-                transition: "all .2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
-            >
-              {userEmail?.split("@")[0] || "账户"}
-            </a>
-          ) : (
-            <a
-              href="/login"
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--muted)",
-                textDecoration: "none",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "3px 10px",
-                whiteSpace: "nowrap",
-                transition: "all .2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--muted)"; }}
-            >
-              登录
-            </a>
-          )}
-
           {/* 配额显示 */}
           {quota && quota.enabled && (
             <span
@@ -1321,15 +1271,24 @@ export default function Page() {
                     条款
                   </a>
                   <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
-                  <a
-                    href="mailto:support@finalspass.top"
-                    onClick={(e) => { e.preventDefault(); setMenuOpen(false); window.location.href = "mailto:support@finalspass.top"; }}
-                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                  <button
+                    onClick={() => { setMenuOpen(false); setSupportOpen(true); }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "0.68rem",
+                      color: "var(--muted)",
+                      padding: "4px 6px",
+                      borderRadius: 4,
+                      opacity: 0.6,
+                      transition: "opacity .15s",
+                    }}
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
                   >
                     帮助
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1375,6 +1334,218 @@ export default function Page() {
           <span>🔄</span>
           <span>{toast}</span>
         </div>
+      )}
+
+      {/* ── 客服聊天窗口 ── */}
+      {supportOpen && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            right: 24,
+            zIndex: 600,
+            width: 360,
+            maxWidth: "calc(100vw - 32px)",
+            background: "var(--paper)",
+            border: "1px solid var(--border)",
+            borderRadius: "16px 16px 0 0",
+            boxShadow: "0 -4px 24px rgba(0,0,0,.12)",
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: 480,
+            animation: "fadeUp .2s ease",
+          }}
+        >
+          {/* 头部 */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 16px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "var(--accent)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  color: "white",
+                  fontWeight: 600,
+                }}
+              >
+                F
+              </div>
+              <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>在线客服</span>
+            </div>
+            <button
+              onClick={() => { setSupportOpen(false); setSupportChat([]); }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "1rem",
+                color: "var(--muted)",
+                padding: 2,
+                lineHeight: 1,
+                opacity: 0.6,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* 消息区域 */}
+          <div
+            style={{
+              flex: 1,
+              overflow: "auto",
+              padding: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              minHeight: 200,
+            }}
+          >
+            {supportChat.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 12px",
+                  color: "var(--muted)",
+                  fontSize: "0.78rem",
+                  lineHeight: 1.8,
+                  margin: "auto",
+                }}
+              >
+                <div style={{ fontSize: "1.5rem", marginBottom: 8 }}>💬</div>
+                您好！我是 FinalsPass 客服助手<br />
+                有什么可以帮您的？
+              </div>
+            )}
+            {supportChat.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "85%",
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  fontSize: "0.8rem",
+                  lineHeight: 1.6,
+                  background: m.role === "user" ? "var(--accent)" : "var(--accent-glow)",
+                  color: m.role === "user" ? "white" : "var(--ink)",
+                  borderBottomRightRadius: m.role === "user" ? 4 : 12,
+                  borderBottomLeftRadius: m.role === "user" ? 12 : 4,
+                  animation: "fadeUp .15s ease",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {m.content}
+              </div>
+            ))}
+            {supportLoading && (
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  padding: "8px 14px",
+                  borderRadius: 12,
+                  fontSize: "0.8rem",
+                  background: "var(--accent-glow)",
+                  color: "var(--muted)",
+                  borderBottomLeftRadius: 4,
+                  animation: "pulse 1.2s ease infinite",
+                }}
+              >
+                正在输入…
+              </div>
+            )}
+          </div>
+
+          {/* 输入框 */}
+          <form
+            onSubmit={handleSupportSend}
+            style={{
+              display: "flex",
+              gap: 8,
+              padding: "10px 12px",
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            <input
+              value={supportMsg}
+              onChange={(e) => setSupportMsg(e.target.value)}
+              placeholder="输入您的问题…"
+              disabled={supportLoading}
+              style={{
+                flex: 1,
+                background: "var(--input-bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: "0.82rem",
+                color: "var(--ink)",
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!supportMsg.trim() || supportLoading}
+              style={{
+                background: supportMsg.trim() && !supportLoading ? "var(--accent)" : "var(--border)",
+                color: supportMsg.trim() && !supportLoading ? "white" : "var(--muted)",
+                border: "none",
+                borderRadius: 10,
+                padding: "8px 14px",
+                fontSize: "0.82rem",
+                cursor: supportMsg.trim() && !supportLoading ? "pointer" : "not-allowed",
+                transition: "background .15s",
+              }}
+            >
+              发送
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* 客服浮动按钮（仅在不显示窗口时） */}
+      {!supportOpen && (
+        <button
+          onClick={() => setSupportOpen(true)}
+          aria-label="在线客服"
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 600,
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "var(--accent)",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1.2rem",
+            boxShadow: "0 4px 16px rgba(37,99,235,.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform .2s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.08)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          💬
+        </button>
       )}
     </div>
     </ErrorBoundary>
