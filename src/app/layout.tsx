@@ -24,7 +24,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer
+          style={{
+            textAlign: "center",
+            padding: "32px 20px 24px",
+            fontSize: "0.78rem",
+            color: "var(--muted)",
+            borderTop: "1px solid var(--border)",
+            fontFamily: "system-ui, sans-serif",
+          }}
+        >
+          <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            <a href="/privacy" style={{ color: "var(--muted)", textDecoration: "none" }}>隐私政策</a>
+            <a href="/terms" style={{ color: "var(--muted)", textDecoration: "none" }}>用户协议</a>
+          </div>
+          <div>&copy; {new Date().getFullYear()} FinalsPass. All rights reserved.</div>
+        </footer>
+      </body>
     </html>
   );
 }

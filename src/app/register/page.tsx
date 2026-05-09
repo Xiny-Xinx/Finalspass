@@ -310,6 +310,19 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* 同意条款 */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.8rem", color: "var(--muted)", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              required
+              style={{ accentColor: "var(--accent)", cursor: "pointer" }}
+            />
+            我已阅读并同意{" "}
+            <a href="/terms" target="_blank" style={{ color: "var(--accent)", textDecoration: "none" }}>用户协议</a>
+            和{" "}
+            <a href="/privacy" target="_blank" style={{ color: "var(--accent)", textDecoration: "none" }}>隐私政策</a>
+          </label>
+
           <button
             type="submit"
             disabled={loading}
@@ -335,6 +348,11 @@ export default function RegisterPage() {
         <a href="/login" style={{ color: "var(--accent)", textDecoration: "none" }}>
           登录
         </a>
+      </p>
+      <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.75rem", color: "var(--muted)" }}>
+        <a href="/privacy" style={{ color: "var(--muted)", textDecoration: "none" }}>隐私</a>
+        <span style={{ margin: "0 8px" }}>·</span>
+        <a href="/terms" style={{ color: "var(--muted)", textDecoration: "none" }}>条款</a>
       </p>
     </div>
   );

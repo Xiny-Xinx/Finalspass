@@ -147,6 +147,11 @@ export default function LoginPage() {
           注册
         </a>
       </p>
+      <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.75rem", color: "var(--muted)" }}>
+        <a href="/privacy" style={{ color: "var(--muted)", textDecoration: "none" }}>隐私</a>
+        <span style={{ margin: "0 8px" }}>·</span>
+        <a href="/terms" style={{ color: "var(--muted)", textDecoration: "none" }}>条款</a>
+      </p>
     </div>
   );
 }
