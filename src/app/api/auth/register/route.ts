@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (storedCode !== code) {
+    // 注意：Upstash Redis 可能把纯数字字符串反序列化为 number 类型
+    // 所以用 String(storedCode) 统一转字符串再比较
+    if (String(storedCode) !== code) {
       return NextResponse.json(
         { error: `验证码错误` },
         { status: 400 }
