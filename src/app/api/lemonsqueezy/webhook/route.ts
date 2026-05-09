@@ -153,7 +153,25 @@ async function handleOrderCreated(event: LsWebhookEvent) {
     }
   } else if (order.type === "subscription" && order.tier) {
     // ── 首次订阅扣款 ──
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    // 尝试从 LS 获取实际的续费日期，兜底用 30 天
+    let expiresAt = "";
+    const subscriptionId = getSubscriptionId(event);
+    if (subscriptionId) {
+      try {
+        const lsApiKey = process.env.LS_API_KEY || "";
+        const subRes = await fetch(
+          `https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`,
+          { headers: { Authorization: `Bearer ${lsApiKey}`, Accept: "application/vnd.api+json" } }
+        );
+        if (subRes.ok) {
+          const subJson = await subRes.json();
+          expiresAt = subJson.data?.attributes?.renews_at || subJson.data?.attributes?.ends_at || "";
+        }
+      } catch {}
+    }
+    if (!expiresAt) {
+      expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+    }
     const ok = await setUserTier(order.userId, order.tier as any, expiresAt);
     if (!ok) {
       console.error(`[ls-webhook] 升级失败 userId=${order.userId} tier=${order.tier}`);
@@ -162,7 +180,6 @@ async function handleOrderCreated(event: LsWebhookEvent) {
     }
 
     // 存储订阅映射（用于后续续费 / 取消事件查找用户）
-    const subscriptionId = getSubscriptionId(event);
     if (subscriptionId) {
       const redis = await getRedis();
       if (redis) {
