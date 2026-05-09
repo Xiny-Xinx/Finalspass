@@ -50,14 +50,21 @@ export async function createCheckout(
 ): Promise<{ url: string; checkoutId: string } | { error: string }> {
   const cfg = getConfig();
 
-  const checkoutData: Record<string, unknown> = {
-    name,
-    description,
-    success_url: redirectUrl,
-    custom: customData,
+  // 按 LS API v1 文档结构组织参数
+  // checkout_data: 客户数据 + 自定义字段
+  // product_options: 商品名称/描述/跳转URL
+  const attributes: Record<string, unknown> = {
+    checkout_data: {
+      custom: customData,
+    },
+    product_options: {
+      name,
+      description,
+      redirect_url: redirectUrl,
+    },
   };
   if (priceCents !== undefined) {
-    checkoutData.custom_price = priceCents;
+    attributes.custom_price = priceCents;
   }
 
   try {
@@ -71,9 +78,7 @@ export async function createCheckout(
       body: JSON.stringify({
         data: {
           type: "checkouts",
-          attributes: {
-            checkout_data: checkoutData,
-          },
+          attributes,
           relationships: {
             store: {
               data: { type: "stores", id: cfg.storeId },
