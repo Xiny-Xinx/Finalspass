@@ -3,7 +3,7 @@ import { z } from "zod";
 import { chat, chatStream } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_CHAT_HISTORY, MAX_QA_CONTEXT_CHARS } from "@/lib/constants";
-import { checkQuota, getClientIP } from "@/lib/rate-limit";
+import { checkTokenBudget, recordTokens, getClientIP } from "@/lib/rate-limit";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -50,7 +50,8 @@ ${context.slice(0, MAX_QA_CONTEXT_CHARS)}`;
 
 export async function POST(req: NextRequest) {
   try {
-    await checkQuota(getClientIP(req));
+    const ip = getClientIP(req);
+    await checkTokenBudget(ip);
     const body = await req.json();
     const { question, context, history, mode, stream, memories } = requestSchema.parse(body);
 
@@ -64,6 +65,10 @@ export async function POST(req: NextRequest) {
       const readable = await chatStream(question, {
         system,
         history: trimmedHistory,
+        onUsage(usage) {
+          // 流结束后记录 token 消耗
+          recordTokens(ip, usage.input_tokens + usage.output_tokens);
+        },
       });
 
       // 将 ReadableStream 转换为 Web API ReadableStream
@@ -77,10 +82,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 非流式（原逻辑）
-    const answer = await chat(question, {
+    const { text: answer, usage } = await chat(question, {
       system,
       history: trimmedHistory,
     });
+
+    // 记录 token 消耗
+    recordTokens(ip, usage.input_tokens + usage.output_tokens);
 
     return NextResponse.json({ answer });
   } catch (error: unknown) {

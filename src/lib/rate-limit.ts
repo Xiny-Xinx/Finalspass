@@ -1,11 +1,11 @@
 /**
  * 用量限额模块（基于 Upstash Redis）
  *
- * 每个 IP 每天限制一定数量的 AI 请求。
+ * 每个 IP 每天限制一定的 API Token 消耗量。
  * 当 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 未配置时自动降级为无限制。
  */
 
-import { DAILY_QUOTA_LIMIT } from "./constants";
+import { DAILY_TOKEN_LIMIT } from "./constants";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis(): Promise<typeof redisClient> {
@@ -52,27 +52,79 @@ export function getClientIP(request: Request): string {
   return "127.0.0.1";
 }
 
-/** 检查是否超限，超限则抛错 */
-export async function checkQuota(ip: string): Promise<void> {
+/** 检查是否超出 Token 预算，超限则抛 429 */
+export async function checkTokenBudget(ip: string): Promise<void> {
   const redis = await getRedis();
   if (!redis) return; // Redis 未配置 → 无限制
 
-  const key = `ratelimit:${ip}:${getDateKey()}`;
+  const key = `tokens:${ip}:${getDateKey()}`;
   try {
-    const count = (await redis.get<number>(key)) ?? 0;
-    if (count >= DAILY_QUOTA_LIMIT) {
-      throw Object.assign(new Error(`今日 AI 调用次数已达上限（${DAILY_QUOTA_LIMIT} 次），${getDateKey()} 重置`), {
-        statusCode: 429,
-      });
-    }
-    await redis.incr(key);
-    if (count === 0) {
-      await redis.expire(key, secondsUntilEndOfDay());
+    const used = (await redis.get<number>(key)) ?? 0;
+    if (used >= DAILY_TOKEN_LIMIT) {
+      throw Object.assign(
+        new Error(
+          `今日 API Token 用量已达上限（${DAILY_TOKEN_LIMIT.toLocaleString()}），${getDateKey()} 重置`
+        ),
+        { statusCode: 429 }
+      );
     }
   } catch (err) {
     if (err instanceof Error && (err as any).statusCode === 429) throw err;
     console.error("[rate-limit] Redis error:", err);
     // Redis 出错不阻塞用户
+  }
+}
+
+/** 记录本次消耗的 token 数 */
+export async function recordTokens(ip: string, tokens: number): Promise<void> {
+  const redis = await getRedis();
+  if (!redis || tokens <= 0) return;
+
+  const key = `tokens:${ip}:${getDateKey()}`;
+  try {
+    const ttl = await redis.ttl(key);
+    if (ttl === -2) {
+      // key 不存在 → 新建并设过期（到当日午夜）
+      await redis.set(key, tokens, { ex: secondsUntilEndOfDay() });
+    } else {
+      await redis.incrby(key, tokens);
+    }
+  } catch (err) {
+    console.error("[rate-limit] recordTokens error:", err);
+  }
+}
+
+/** 查询当前配额使用情况（token 维度） */
+export async function getQuota(ip: string): Promise<QuotaInfo> {
+  const redis = await getRedis();
+  if (!redis) {
+    return {
+      used: 0,
+      limit: DAILY_TOKEN_LIMIT,
+      remaining: DAILY_TOKEN_LIMIT,
+      resetDate: getDateKey(),
+      enabled: false,
+    };
+  }
+
+  const key = `tokens:${ip}:${getDateKey()}`;
+  try {
+    const used = (await redis.get<number>(key)) ?? 0;
+    return {
+      used,
+      limit: DAILY_TOKEN_LIMIT,
+      remaining: Math.max(0, DAILY_TOKEN_LIMIT - used),
+      resetDate: getDateKey(),
+      enabled: true,
+    };
+  } catch {
+    return {
+      used: 0,
+      limit: DAILY_TOKEN_LIMIT,
+      remaining: DAILY_TOKEN_LIMIT,
+      resetDate: getDateKey(),
+      enabled: false,
+    };
   }
 }
 
@@ -107,31 +159,15 @@ export async function diagnoseQuota(): Promise<Record<string, any>> {
   }
 
   return {
-    env: { UPSTASH_REDIS_REST_URL: urlExists, UPSTASH_REDIS_REST_TOKEN: tokenExists },
-    preview: { UPSTASH_REDIS_REST_URL: urlPrefix, UPSTASH_REDIS_REST_TOKEN: tokenPrefix },
+    env: {
+      UPSTASH_REDIS_REST_URL: urlExists,
+      UPSTASH_REDIS_REST_TOKEN: tokenExists,
+    },
+    preview: {
+      UPSTASH_REDIS_REST_URL: urlPrefix,
+      UPSTASH_REDIS_REST_TOKEN: tokenPrefix,
+    },
     connectionTest,
     nodeEnv: process.env.NODE_ENV ?? "unknown",
   };
-}
-
-/** 查询当前配额使用情况 */
-export async function getQuota(ip: string): Promise<QuotaInfo> {
-  const redis = await getRedis();
-  if (!redis) {
-    return { used: 0, limit: DAILY_QUOTA_LIMIT, remaining: DAILY_QUOTA_LIMIT, resetDate: getDateKey(), enabled: false };
-  }
-
-  const key = `ratelimit:${ip}:${getDateKey()}`;
-  try {
-    const count = (await redis.get<number>(key)) ?? 0;
-    return {
-      used: count,
-      limit: DAILY_QUOTA_LIMIT,
-      remaining: Math.max(0, DAILY_QUOTA_LIMIT - count),
-      resetDate: getDateKey(),
-      enabled: true,
-    };
-  } catch {
-    return { used: 0, limit: DAILY_QUOTA_LIMIT, remaining: DAILY_QUOTA_LIMIT, resetDate: getDateKey(), enabled: false };
-  }
 }

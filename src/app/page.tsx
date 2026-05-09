@@ -441,15 +441,15 @@ export default function Page() {
             style={{
               fontFamily: "monospace",
               fontSize: "0.65rem",
-              color: quota.remaining <= 3 ? "var(--accent)" : "var(--muted)",
-              border: `1.5px solid ${quota.remaining <= 3 ? "var(--accent)" : "var(--border)"}`,
+              color: quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)",
+              border: `1.5px solid ${quota.remaining <= 10000 ? "var(--accent)" : "var(--border)"}`,
               borderRadius: 20,
               padding: "3px 10px",
               whiteSpace: "nowrap",
             }}
-            title={`今日已用 ${quota.used} 次，${quota.resetDate} 重置`}
+            title={`今日已用 ${quota.used.toLocaleString()} tokens，${quota.resetDate} 重置`}
           >
-            剩余 {quota.remaining}/{quota.limit} 次
+            剩余 {(quota.remaining / 1000).toFixed(0)}k/{(quota.limit / 1000).toFixed(0)}k
           </span>
         )}
 

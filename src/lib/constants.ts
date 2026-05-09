@@ -16,8 +16,8 @@ export const MAX_DETAIL_CONTEXT_CHARS = 3000;
 /** 多轮对话保留的历史消息条数(单数表示成对) */
 export const MAX_CHAT_HISTORY = 10;
 
-/** 每日 API 调用限额(免费用户) */
-export const DAILY_QUOTA_LIMIT = 20;
+/** 每日 API Token 限额(免费用户) */
+export const DAILY_TOKEN_LIMIT = 100000;
 
 /** localStorage 键 */
 export const STORAGE_KEY = "finalspass:session:v1";

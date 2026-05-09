@@ -27,10 +27,15 @@ export interface ChatOptions {
   maxTokens?: number;
 }
 
+export interface UsageInfo {
+  input_tokens: number;
+  output_tokens: number;
+}
+
 export async function chat(
   userMsg: string,
   options: ChatOptions = {}
-): Promise<string> {
+): Promise<{ text: string; usage: UsageInfo }> {
   const {
     system,
     history = [],
@@ -48,26 +53,29 @@ export async function chat(
     messages,
   });
 
-  // 拼接所有 text 块,而不是只取第一块(更鲁棒)
-  return res.content
+  const text = res.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
     .join("")
     .trim();
+
+  return { text, usage: res.usage };
 }
 
 /**
  * 流式对话（SSE）。返回一个 ReadableStream<string>，每次 yield 一个 text delta。
+ * 通过 onUsage 回调返回精确的 token 消耗。
  */
 export async function chatStream(
   userMsg: string,
-  options: ChatOptions = {}
+  options: ChatOptions & { onUsage?: (usage: UsageInfo) => void } = {}
 ): Promise<ReadableStream<string>> {
   const {
     system,
     history = [],
     model = DEFAULT_MODEL,
     maxTokens = DEFAULT_MAX_TOKENS,
+    onUsage,
   } = options;
 
   const client = getClient();
@@ -81,21 +89,39 @@ export async function chatStream(
     stream: true,
   });
 
+  let inputTokens = 0;
+  let outputTokens = 0;
+
   return new ReadableStream({
     async start(controller) {
       try {
         for await (const event of stream) {
+          if (event.type === "message_start") {
+            inputTokens = event.message.usage.input_tokens;
+          }
           if (
             event.type === "content_block_delta" &&
             event.delta.type === "text_delta"
           ) {
             controller.enqueue(event.delta.text);
           }
+          if (event.type === "message_delta") {
+            outputTokens = event.usage.output_tokens;
+          }
         }
         controller.close();
       } catch (err) {
-        // 如果流被客户端取消（AbortSignal），这里会抛错，忽略
         controller.error(err);
+      } finally {
+        if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
+          onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
+        }
+      }
+    },
+    cancel() {
+      // 客户端断开时仍然上报已消耗的 token（input 已确定，output 可能为 0）
+      if (onUsage && (inputTokens > 0 || outputTokens > 0)) {
+        onUsage({ input_tokens: inputTokens, output_tokens: outputTokens });
       }
     },
   });
