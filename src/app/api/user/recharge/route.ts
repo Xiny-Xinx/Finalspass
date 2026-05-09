@@ -21,6 +21,10 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // 充值功能暂未开放，请使用订阅套餐
+  return NextResponse.json({ error: "功能暂未开放" }, { status: 403 });
+
+  /* 以后启用时取消注释
   const auth = getAuthUser(req);
   if (!auth) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
@@ -93,4 +97,5 @@ export async function POST(req: NextRequest) {
     console.error("[recharge] 创建订单失败:", error);
     return NextResponse.json({ error: "创建订单失败" }, { status: 500 });
   }
+  */   // 以后启用时删除上面这行和开头的 return
 }
