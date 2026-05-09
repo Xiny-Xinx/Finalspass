@@ -972,7 +972,7 @@ export default function Page() {
         />
       )}
 
-      {/* ── 侧边栏菜单 ── */}
+      {/* ── 侧边栏（类 Claude 风格） ── */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
@@ -988,35 +988,54 @@ export default function Page() {
             className="sidebar-aside"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 300,
-              maxWidth: "80vw",
+              width: 320,
+              maxWidth: "85vw",
               height: "100%",
-              background: "var(--paper)",
-              borderRight: "1px solid var(--border)",
+              background: "var(--sidebar-bg)",
+              borderRight: "1px solid var(--sidebar-border)",
               display: "flex",
               flexDirection: "column",
               animation: "slideIn .2s ease",
             }}
           >
-            {/* 侧栏头部 */}
+            {/* ── 顶部品牌 ── */}
             <div
               style={{
-                padding: "14px 16px",
-                borderBottom: "1px solid var(--border)",
+                padding: "18px 18px 14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
             >
-              <div
-                style={{
-                  fontFamily: "'Noto Serif SC', Georgia, serif",
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  color: "var(--accent)",
-                }}
-              >
-                FinalsPass
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "var(--accent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    fontFamily: "'Noto Serif SC', serif",
+                  }}
+                >
+                  F
+                </div>
+                <span
+                  style={{
+                    fontFamily: "'Noto Serif SC', Georgia, serif",
+                    fontSize: "0.95rem",
+                    fontWeight: 700,
+                    color: "var(--ink)",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  FinalsPass
+                </span>
               </div>
               <button
                 type="button"
@@ -1026,58 +1045,92 @@ export default function Page() {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontSize: "1.2rem",
+                  fontSize: "1rem",
                   color: "var(--muted)",
-                  padding: 2,
+                  padding: 4,
                   lineHeight: 1,
+                  borderRadius: 6,
+                  opacity: 0.6,
+                  transition: "opacity .2s",
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
               >
                 ✕
               </button>
             </div>
 
-            {/* 新建上传 */}
-            <button
-              type="button"
-              onClick={() => { reset(); setMenuOpen(false); }}
-              style={{
-                margin: "12px 12px 0",
-                padding: "10px",
-                background: "var(--accent)",
-                color: "white",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                fontSize: "0.82rem",
-                fontFamily: "monospace",
-                fontWeight: 500,
-                transition: "opacity .2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-            >
-              + 新建上传
-            </button>
+            {/* ── 新建按钮 ── */}
+            <div style={{ padding: "0 14px 14px" }}>
+              <button
+                type="button"
+                onClick={() => { reset(); setMenuOpen(false); }}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  background: "var(--accent)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  transition: "opacity .2s, transform .15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.92"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
+              >
+                <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>+</span>
+                新建上传
+              </button>
+            </div>
 
-            {/* 历史记录列表 */}
-            <div style={{ flex: 1, overflow: "auto", padding: "12px" }}>
+            {/* ── 历史记录列表 ── */}
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                padding: "0 10px 8px",
+              }}
+            >
               {sessionList.length === 0 ? (
                 <div
                   style={{
                     textAlign: "center",
-                    padding: "32px 12px",
+                    padding: "40px 16px",
                     color: "var(--muted)",
                     fontSize: "0.78rem",
-                    lineHeight: 1.7,
+                    lineHeight: 1.8,
                   }}
                 >
-                  <div style={{ fontSize: "1.5rem", marginBottom: 8 }}>📂</div>
-                  暂无历史记录<br />
-                  上传文件后历史将自动保存
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: "var(--sidebar-hover)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 14px",
+                      fontSize: "1.2rem",
+                    }}
+                  >
+                    📂
+                  </div>
+                  暂无历史记录
+                  <br />
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", opacity: 0.7 }}>
+                    上传文件后自动保存
+                  </span>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {sessionList.map((s) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {sessionList.map((s, i) => (
                     <button
                       key={s.id}
                       type="button"
@@ -1087,16 +1140,17 @@ export default function Page() {
                         font: "inherit",
                         width: "100%",
                         padding: "10px 12px",
-                        borderRadius: "var(--radius-sm)",
+                        borderRadius: "var(--radius-md)",
                         background: "none",
                         border: "none",
                         cursor: "pointer",
                         display: "flex",
                         flexDirection: "column",
-                        gap: 4,
+                        gap: 3,
+                        animation: `fadeUp .25s ease ${i * 0.03}s both`,
                         transition: "background .15s",
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-glow)"; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
                     >
                       <div
@@ -1109,15 +1163,16 @@ export default function Page() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        📄 {s.fileName}
+                        {s.fileName}
                       </div>
                       <div
                         style={{
                           display: "flex",
                           gap: 10,
-                          fontSize: "0.66rem",
+                          fontSize: "0.65rem",
                           color: "var(--muted)",
                           fontFamily: "monospace",
+                          opacity: 0.7,
                         }}
                       >
                         <span>{new Date(s.timestamp).toLocaleDateString("zh-CN")}</span>
@@ -1129,7 +1184,7 @@ export default function Page() {
               )}
             </div>
 
-            {/* 侧栏底部 */}
+            {/* ── 底部用户区 ── */}
             <div
               style={{
                 borderTop: "1px solid var(--border)",

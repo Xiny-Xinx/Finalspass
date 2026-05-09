@@ -32,6 +32,9 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --sidebar-bg: #f1f5f9;
+  --sidebar-border: #e2e8f0;
+  --sidebar-hover: rgba(0,0,0,0.04);
 }
 
 /* ── Dark theme ── */
@@ -57,6 +60,9 @@
   --danger:    #ef4444;
   --danger-glow: rgba(239, 68, 68, 0.1);
   --overlay:   rgba(0, 0, 0, 0.6);
+  --sidebar-bg: #0a0f1c;
+  --sidebar-border: #1e2d48;
+  --sidebar-hover: rgba(255,255,255,0.04);
 }
 
 body {
