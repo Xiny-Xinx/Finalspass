@@ -503,25 +503,55 @@ export default function Page() {
         </h1>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          {/* 配额显示 */}
+          {/* 配额显示：圆形进度环 */}
           {quota && quota.enabled && (
-            <span
+            <div
+              title={isLoggedIn ? `今日已用 ${quota.used.toLocaleString()} / ${quota.limit.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
               style={{
-                fontFamily: "monospace",
-                fontSize: "0.65rem",
-                color: quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)",
-                border: `1px solid ${quota.remaining <= 10000 ? "var(--accent)" : "var(--border)"}`,
-                borderRadius: 20,
-                padding: "3px 10px",
-                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                cursor: "default",
               }}
-              title={isLoggedIn ? `今日剩余 ${quota.remaining.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
             >
-              {isLoggedIn
-                ? `${(quota.remaining / 1000).toFixed(0)}k`
-                : `${(quota.remaining / 1000).toFixed(0)}k/${(quota.limit / 1000).toFixed(0)}k`
-              }
-            </span>
+              <svg width="30" height="30" viewBox="0 0 30 30">
+                {/* 背景圆环 */}
+                <circle
+                  cx="15" cy="15" r="11"
+                  fill="none"
+                  stroke="var(--border)"
+                  strokeWidth="3"
+                />
+                {/* 进度弧 */}
+                <circle
+                  cx="15" cy="15" r="11"
+                  fill="none"
+                  stroke={quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)"}
+                  strokeWidth="3"
+                  strokeDasharray={`${(quota.used / quota.limit) * 69.12} 69.12`}
+                  strokeDashoffset="0"
+                  strokeLinecap="round"
+                  transform="rotate(-90, 15, 15)"
+                  style={{ transition: "stroke-dasharray .3s ease, stroke .3s ease" }}
+                />
+                {/* 中心文字 */}
+                <text
+                  x="15" y="19"
+                  textAnchor="middle"
+                  fill={quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)"}
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight={600}
+                >
+                  {(quota.remaining / 1000).toFixed(0)}
+                </text>
+              </svg>
+              {quota.remaining <= 5000 && (
+                <span style={{ fontSize: "0.6rem", color: "var(--accent)", fontFamily: "monospace" }}>
+                  即将用完
+                </span>
+              )}
+            </div>
           )}
 
           {stage === "results" && (
