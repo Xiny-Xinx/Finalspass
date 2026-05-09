@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getOrder } from "@/lib/order-store";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const auth = getAuthUser(req);
   const outTradeNo = req.nextUrl.searchParams.get("out_trade_no");

@@ -4,6 +4,8 @@ import { getAuthUser } from "@/lib/quota-guard";
 import { getUserById, checkTierExpiry } from "@/lib/user-store";
 import { USER_DAILY_CAP, GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT, TIER_LIMITS } from "@/lib/constants";
 
+export const dynamic = "force-dynamic";
+
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis() {
   if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {

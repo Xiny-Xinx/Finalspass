@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getUserById, checkTierExpiry } from "@/lib/user-store";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth) {
