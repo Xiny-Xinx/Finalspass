@@ -85,9 +85,11 @@ export async function extractPdf(
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf, verbosity: 0 }).promise;
 
+  const MAX_PAGES = 30;
+  const totalPages = Math.min(pdf.numPages, MAX_PAGES);
   const parts: string[] = [];
   let skipped = 0;
-  for (let i = 1; i <= pdf.numPages; i++) {
+  for (let i = 1; i <= totalPages; i++) {
     onProgress?.(i, pdf.numPages);
     try {
       const page = await pdf.getPage(i);
@@ -101,6 +103,9 @@ export async function extractPdf(
     } catch {
       skipped++;
     }
+  }
+  if (pdf.numPages > MAX_PAGES) {
+    parts.push(`\n\n[注意：文件共 ${pdf.numPages} 页，仅处理了前 ${MAX_PAGES} 页]`);
   }
 
   if (parts.length === 0) {
