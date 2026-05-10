@@ -5,7 +5,7 @@
  * 当 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 未配置时自动降级为无限制。
  */
 
-import { DAILY_TOKEN_LIMIT, QUOTA_WINDOW_HOURS } from "./constants";
+import { TIER_LIMITS, QUOTA_WINDOW_HOURS } from "./constants";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis(): Promise<typeof redisClient> {
@@ -61,11 +61,11 @@ export async function checkTokenBudget(ip: string, minRemaining: number = 0): Pr
   const key = `tokens:${ip}:${getDateKey()}`;
   try {
     const used = (await redis.get<number>(key)) ?? 0;
-    const remaining = DAILY_TOKEN_LIMIT - used;
+    const remaining = TIER_LIMITS.free - used;
     if (remaining <= 0) {
       throw Object.assign(
         new Error(
-          `今日免费额度已用完（${DAILY_TOKEN_LIMIT.toLocaleString()}），请登录后使用或明日再试`
+          `今日免费额度已用完（${TIER_LIMITS.free.toLocaleString()}），请登录后使用或明日再试`
         ),
         { statusCode: 429 }
       );
@@ -125,8 +125,8 @@ export async function getQuota(ip: string): Promise<QuotaInfo> {
   if (!redis) {
     return {
       used: 0,
-      limit: DAILY_TOKEN_LIMIT,
-      remaining: DAILY_TOKEN_LIMIT,
+      limit: TIER_LIMITS.free,
+      remaining: TIER_LIMITS.free,
       resetDate: getDateKey(),
       enabled: false,
     };
@@ -137,16 +137,16 @@ export async function getQuota(ip: string): Promise<QuotaInfo> {
     const used = (await redis.get<number>(key)) ?? 0;
     return {
       used,
-      limit: DAILY_TOKEN_LIMIT,
-      remaining: Math.max(0, DAILY_TOKEN_LIMIT - used),
+      limit: TIER_LIMITS.free,
+      remaining: Math.max(0, TIER_LIMITS.free - used),
       resetDate: getDateKey(),
       enabled: true,
     };
   } catch {
     return {
       used: 0,
-      limit: DAILY_TOKEN_LIMIT,
-      remaining: DAILY_TOKEN_LIMIT,
+      limit: TIER_LIMITS.free,
+      remaining: TIER_LIMITS.free,
       resetDate: getDateKey(),
       enabled: false,
     };

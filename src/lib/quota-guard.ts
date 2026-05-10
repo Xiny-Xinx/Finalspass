@@ -2,13 +2,8 @@
  * 统一配额守卫
  *
  * 根据请求是否携带有效 JWT 自动选择：
- *   - 已登录用户 → 从余额扣减 tokens（附带每日上限和速率限制）
- *   - 未登录游客 → 沿用 IP-based 每日限额（附带速率限制）
- *
- * 每次请求执行三层检查：
- *   1. 速率限制（RPM）
- *   2. 最低 token 预检（防止余额/限额极低时仍发起请求）
- *   3. 配额/余额检查
+ *   - 已登录用户 → 检查每日使用上限
+ *   - 未登录游客 → 沿用 IP-based 每日限额
  *
  * 用法：
  *   const guard = await withQuota(req);
@@ -17,12 +12,11 @@
  */
 
 import { verifyJWT, JwtPayload } from "./auth";
-import { deductUserBalance, getUserById } from "./user-store";
+import { getUserById } from "./user-store";
 import { checkTokenBudget, recordTokens, getClientIP } from "./rate-limit";
 import { checkGuestRateLimit, checkUserRateLimit } from "./rate-limiter";
 import {
   MODEL_QUOTA_COST,
-  MIN_REQUEST_TOKENS,
   GUEST_RPM_LIMIT,
   USER_RPM_LIMIT,
   TIER_LIMITS,
@@ -158,16 +152,8 @@ export async function withQuota(req: Request) {
     }
 
     const tier = user.tier;
-    const hasPaidTier = tier === "pro" || tier === "premium";
 
-    if (hasPaidTier) {
-      await checkUserDailyCap(auth.userId);
-    } else {
-      if (user.balance < MIN_REQUEST_TOKENS) {
-        await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
-      }
-      await checkUserDailyCap(auth.userId);
-    }
+    await checkUserDailyCap(auth.userId);
 
     return {
       userId: auth.userId,
@@ -176,18 +162,10 @@ export async function withQuota(req: Request) {
       tier,
       /** 调用 AI 前检查该模型今日是否已达上限 */
       checkModelCap: async (modelId: string) => checkModelCap(auth.userId, tier, modelId),
-      /** AI 调用后，扣除实际消耗的配额 */
+      /** AI 调用后，记录每日用量 */
       deduct: async (units: number, modelId?: string) => {
         if (units > 0) {
-          if (hasPaidTier) {
-            await recordUserDailyUsage(auth.userId, units);
-          } else {
-            const result = await deductUserBalance(auth.userId, units * 1000);
-            if (!result.ok) {
-              console.error(`[quota] 扣减失败 userId=${auth.userId} units=${units}: ${result.error}`);
-            }
-            await recordUserDailyUsage(auth.userId, units);
-          }
+          await recordUserDailyUsage(auth.userId, units);
           // 如有模型 ID，自增该模型的单独计数器
           if (modelId) {
             const mk = `user:daily:model:${auth.userId}:${dateKey()}:${modelId}`;
@@ -211,7 +189,7 @@ export async function withQuota(req: Request) {
     throw Object.assign(new Error("请求过于频繁，请稍后再试"), { statusCode: 429 });
   }
 
-  await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
+  await checkTokenBudget(ip);
 
   return {
     userId: null,

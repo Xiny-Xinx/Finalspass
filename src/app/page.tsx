@@ -258,7 +258,7 @@ export default function Page() {
         if (typeof data.remaining === "number") {
           setQuota(data);
           setIsLoggedIn(data.isLoggedIn === true);
-          if (data.isLoggedIn && data.balance !== undefined) {
+          if (data.isLoggedIn) {
             setUserEmail(data.email || null);
           }
           // 根据套餐限制可用模型（免费用户只能使用偏低性能的模型）

@@ -2,7 +2,7 @@
  * 用户存储（基于 Upstash Redis）
  *
  * 数据结构：
- *   user:{id}          → { id, email, username, passwordHash, createdAt, balance }
+ *   user:{id}          → { id, email, username, passwordHash, createdAt }
  *   user:email:{email}  → userId（唯一索引）
  *   user:username:{username} → userId（唯一索引）
  *   user:id:{id}:email  → email（反向校验）
@@ -35,10 +35,6 @@ export interface User {
   username: string;
   passwordHash: string;
   createdAt: string;
-  /** 当前可用 token 余额 */
-  balance: number;
-  /** 累计充值总额（tokens） */
-  totalPurchased: number;
   /** 邮箱是否已验证 */
   verified: boolean;
   /** 套餐等级 */
@@ -52,8 +48,6 @@ export interface PublicUser {
   email: string;
   username: string;
   createdAt: string;
-  balance: number;
-  totalPurchased: number;
   verified: boolean;
   tier: UserTier;
   tierExpiresAt: string | null;
@@ -65,8 +59,6 @@ function toPublic(user: User): PublicUser {
     email: user.email,
     username: user.username,
     createdAt: user.createdAt,
-    balance: user.balance,
-    totalPurchased: user.totalPurchased,
     verified: user.verified,
     tier: user.tier,
     tierExpiresAt: user.tierExpiresAt,
@@ -110,8 +102,6 @@ export async function createUser(
     username,
     passwordHash,
     createdAt: now,
-    balance: 0,
-    totalPurchased: 0,
     verified: false,
     tier: "free",
     tierExpiresAt: null,
@@ -122,7 +112,6 @@ export async function createUser(
   multi.set(`user:${id}`, JSON.stringify(user));
   multi.set(`user:email:${email}`, id);
   multi.set(`user:username:${username}`, id);
-  multi.set(`user:${id}:balance`, 0); // 初始化原子余额 key
   const results = await multi.exec();
 
   // 检查是否成功
@@ -164,7 +153,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
 }
 
-/** 根据 ID 查找用户（自动同步原子余额 key） */
+/** 根据 ID 查找用户 */
 export async function getUserById(id: string): Promise<User | null> {
   const redis = await getRedis();
   if (!redis) return null;
@@ -172,20 +161,7 @@ export async function getUserById(id: string): Promise<User | null> {
   const raw = await redis.get<any>(`user:${id}`);
   if (!raw) return null;
 
-  const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
-
-  // 从原子余额 key 同步最新余额
-  try {
-    const balanceKey = `user:${id}:balance`;
-    const atomicBalance = await redis.get<number>(balanceKey);
-    if (atomicBalance !== null && atomicBalance !== undefined) {
-      user.balance = atomicBalance;
-    }
-  } catch {
-    // 原子 key 不存在时使用 JSON 中的余额
-  }
-
-  return user;
+  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
 }
 
 /** 验证登录（login 可以是邮箱或用户名） */
@@ -254,43 +230,6 @@ async function saveUser(user: User): Promise<boolean> {
   return r === "OK";
 }
 
-/** 增加用户 token 余额（原子操作） */
-export async function addUserBalance(
-  userId: string,
-  tokens: number
-): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
-  const redis = await getRedis();
-  if (!redis) return { ok: false, error: "Redis 未配置" };
-
-  // 使用独立 balance key 原子累加
-  const balanceKey = `user:${userId}:balance`;
-  try {
-    // 先确保 key 存在（初始化新用户）
-    const exists = await redis.exists(balanceKey);
-    if (!exists) {
-      // 从 user JSON 中读取当前余额
-      const raw = await redis.get<any>(`user:${userId}`);
-      if (!raw) return { ok: false, error: "用户不存在" };
-      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
-      await redis.set(balanceKey, user.balance);
-    }
-
-    const newBalance = await redis.incrby(balanceKey, tokens);
-    // 同时更新 JSON 中的 balance 和 totalPurchased 保持一致性
-    const raw = await redis.get<any>(`user:${userId}`);
-    if (raw) {
-      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
-      user.balance = newBalance;
-      user.totalPurchased += tokens;
-      await redis.set(`user:${userId}`, JSON.stringify(user));
-    }
-
-    return { ok: true, balance: newBalance };
-  } catch {
-    return { ok: false, error: "操作失败" };
-  }
-}
-
 /** 设置用户套餐等级 */
 export async function setUserTier(
   userId: string,
@@ -321,43 +260,5 @@ export async function checkTierExpiry(userId: string): Promise<void> {
     user.tierExpiresAt = null;
     await saveUser(user);
     console.log(`[tier] 套餐到期降级 userId=${userId} 旧等级=${oldTier}`);
-  }
-}
-
-/** 扣除用户 token 余额（原子操作，防止并发超扣） */
-export async function deductUserBalance(
-  userId: string,
-  tokens: number
-): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
-  const redis = await getRedis();
-  if (!redis) return { ok: false, error: "Redis 未配置" };
-  if (tokens <= 0) {
-    // 查询当前余额返回
-    const balanceKey = `user:${userId}:balance`;
-    const balance = (await redis.get<number>(balanceKey)) ?? 0;
-    return { ok: true, balance };
-  }
-
-  const balanceKey = `user:${userId}:balance`;
-  try {
-    // 原子减扣，INCRBY 返回新值
-    const newBalance = await redis.incrby(balanceKey, -tokens);
-    if (newBalance < 0) {
-      // 余额不足，回滚
-      await redis.incrby(balanceKey, tokens);
-      return { ok: false, error: "余额不足" };
-    }
-
-    // 同步更新 user JSON
-    const raw = await redis.get<any>(`user:${userId}`);
-    if (raw) {
-      const user = (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
-      user.balance = newBalance;
-      await redis.set(`user:${userId}`, JSON.stringify(user));
-    }
-
-    return { ok: true, balance: newBalance };
-  } catch {
-    return { ok: false, error: "操作失败" };
   }
 }

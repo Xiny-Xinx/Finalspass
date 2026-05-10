@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhook } from "@/lib/lemonsqueezy";
 import { getOrder, markOrderSuccess } from "@/lib/order-store";
-import { addUserBalance, setUserTier } from "@/lib/user-store";
+import { setUserTier } from "@/lib/user-store";
 
 let redisClient: import("@upstash/redis").Redis | null = null;
 async function getRedis() {
@@ -143,15 +143,7 @@ async function handleOrderCreated(event: LsWebhookEvent) {
   const lsOrderId = attrs.identifier || "";
   await markOrderSuccess(outTradeNo, lsOrderId);
 
-  if (order.type === "recharge" && order.tokens) {
-    // ── 充值 ──
-    const result = await addUserBalance(order.userId, order.tokens);
-    if (!result.ok) {
-      console.error(`[ls-webhook] 充值失败 userId=${order.userId} tokens=${order.tokens}: ${result.error}`);
-    } else {
-      console.log(`[ls-webhook] 充值成功 userId=${order.userId} tokens=${order.tokens}`);
-    }
-  } else if (order.type === "subscription" && order.tier) {
+  if (order.type === "subscription" && order.tier) {
     // ── 首次订阅扣款 ──
     // 尝试从 LS 获取实际的续费日期，兜底用 30 天
     let expiresAt = "";

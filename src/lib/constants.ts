@@ -28,9 +28,6 @@ export const MODEL_QUOTA_COST: Record<string, number> = {
 export const EXTRACT_QUOTA_COST = 5;
 export const QUIZ_QUOTA_COST = 3;
 
-/** 未登录游客每日免费配额（单位：次） */
-export const DAILY_TOKEN_LIMIT = 30;
-
 /** 各套餐下各模型的每日调用次数上限（附加限制，在单位配额之上） */
 export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
   free: {},
@@ -52,24 +49,8 @@ export const TIER_PRICES: Record<string, number> = {
   premium: 18.49,
 };
 
-/** 充值包：tokens -> 价格（美元） */
-export const TOP_UP_PACKAGES: { tokens: number; price: number; label: string }[] = [
-  { tokens: 200000, price: 2, label: "20 万" },
-  { tokens: 1000000, price: 8, label: "100 万" },
-  { tokens: 5000000, price: 30, label: "500 万" },
-];
-
-/** 充值包基准价格（美元/百万 tokens） */
-export const TOP_UP_RATE = 8; // $8/百万 tokens
-
 /** Token 重置窗口(小时)。默认 24 小时，可通过环境变量 QUOTA_WINDOW_HOURS 覆盖 */
 export const QUOTA_WINDOW_HOURS = Number(process.env.QUOTA_WINDOW_HOURS) || 24;
-
-/** 每次 AI 请求最低预扣 token（防止余额极低时仍发起请求） */
-export const MIN_REQUEST_TOKENS = Number(process.env.MIN_REQUEST_TOKENS) || 1000;
-
-/** 单个用户每日 token 消耗上限（防止恶意耗尽余额） */
-export const USER_DAILY_CAP = Number(process.env.USER_DAILY_CAP) || 500000;
 
 /** 速率限制: 每分钟最大请求数（游客） */
 export const GUEST_RPM_LIMIT = Number(process.env.GUEST_RPM_LIMIT) || 10;

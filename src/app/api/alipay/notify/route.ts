@@ -13,7 +13,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyNotify } from "@/lib/alipay";
 import { getOrder, markOrderSuccess } from "@/lib/order-store";
-import { addUserBalance } from "@/lib/user-store";
 import { setUserTier } from "@/lib/user-store";
 
 export async function POST(req: NextRequest) {
@@ -67,18 +66,7 @@ export async function POST(req: NextRequest) {
     await markOrderSuccess(out_trade_no, trade_no);
 
     // 7. 执行业务逻辑
-    if (order.type === "recharge" && order.tokens) {
-      const result = await addUserBalance(order.userId, order.tokens);
-      if (!result.ok) {
-        console.error(
-          `[alipay-notify] 加款失败 userId=${order.userId} tokens=${order.tokens}: ${result.error}`
-        );
-      } else {
-        console.log(
-          `[alipay-notify] 充值成功 userId=${order.userId} tokens=${order.tokens} 余额=${result.balance}`
-        );
-      }
-    } else if (order.type === "subscription" && order.tier) {
+    if (order.type === "subscription" && order.tier) {
       const expiresAt = new Date(
         Date.now() + 30 * 24 * 60 * 60 * 1000
       ).toISOString();

@@ -14,7 +14,7 @@ import { z } from "zod";
 import { getAuthUser } from "@/lib/quota-guard";
 import { createCheckout, isLsConfigured } from "@/lib/lemonsqueezy";
 import { createOrder } from "@/lib/order-store";
-import { TOP_UP_RATE } from "@/lib/constants";
+const TOP_UP_RATE = 8; // $8/百万 tokens
 
 const schema = z.object({
   tokens: z.number().int().positive("充值数量必须大于 0"),

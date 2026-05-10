@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getQuota, getClientIP } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getUserById, checkTierExpiry } from "@/lib/user-store";
-import { GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT, TIER_LIMITS } from "@/lib/constants";
+import { GUEST_RPM_LIMIT, USER_RPM_LIMIT, TIER_LIMITS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -54,9 +54,6 @@ export async function GET(req: Request) {
         remaining: Math.max(0, tierLimit - dailyUsed),
         resetDate: dateKey,
         enabled: true,
-        // 真实数据
-        balance: user.balance,
-        totalPurchased: user.totalPurchased,
         email: user.email,
         verified: user.verified,
         dailyCap: tierLimit,
@@ -73,7 +70,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ...quota,
       isLoggedIn: false,
-      dailyCap: DAILY_TOKEN_LIMIT,
+      dailyCap: TIER_LIMITS.free,
       rateLimit: GUEST_RPM_LIMIT,
     });
   } catch (err) {

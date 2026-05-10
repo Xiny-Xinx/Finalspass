@@ -24,8 +24,6 @@ export async function GET(req: Request) {
       email: user.email,
       username: user.username,
       createdAt: user.createdAt,
-      balance: user.balance,
-      totalPurchased: user.totalPurchased,
       verified: user.verified,
       tier: user.tier,
       tierExpiresAt: user.tierExpiresAt,

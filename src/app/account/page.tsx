@@ -9,8 +9,6 @@ interface UserInfo {
   id: string;
   email: string;
   createdAt: string;
-  balance: number;
-  totalPurchased: number;
   verified: boolean;
   tier: string;
   tierExpiresAt: string | null;
@@ -325,31 +323,6 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* Token 余额 */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontFamily: "monospace" }}>
-              Token 余额
-            </div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)" }}>
-              {user.balance.toLocaleString()}
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontFamily: "monospace" }}>
-              累计充值
-            </div>
-            <div style={{ fontSize: "1rem", fontWeight: 600 }}>
-              {user.totalPurchased.toLocaleString()}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── 消息提示 ── */}
