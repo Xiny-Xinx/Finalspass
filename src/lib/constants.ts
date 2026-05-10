@@ -20,7 +20,7 @@ export const MAX_CHAT_HISTORY = 10;
 export const MODEL_QUOTA_COST: Record<string, number> = {
   "deepseek-v4-flash": 1,
   "deepseek-chat": 2,
-  "deepseek-v4-pro": 5,
+  "deepseek-v4-pro": 15,
   "claude-sonnet-4-20250514": 10,
 };
 
@@ -35,14 +35,14 @@ export const DAILY_TOKEN_LIMIT = 30;
 export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
   free: {},
   pro: { "deepseek-v4-pro": 25 },
-  premium: { "deepseek-v4-pro": 80 },
+  premium: { "deepseek-v4-pro": 30 },
 };
 
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
   free: 30,
-  pro: 400,
-  premium: 1000,
+  pro: 120,
+  premium: 500,
 };
 
 /** 各套餐的价格（澳元/月） */
