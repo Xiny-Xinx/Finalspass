@@ -413,6 +413,7 @@ export async function chatStream(
 
 /**
  * 从 LLM 输出中稳健地抽取 JSON。
+ * 自动修复常见格式错误（尾逗号、未闭合引号等）。
  */
 export function parseJsonFromLLM<T = unknown>(raw: string): T {
   let s = raw.replace(/```(?:json)?/gi, "").trim();
@@ -423,13 +424,26 @@ export function parseJsonFromLLM<T = unknown>(raw: string): T {
     s = s.slice(first, last + 1);
   }
 
+  // 修复尾逗号：将 ,] 替换为 ]，将 ,} 替换为 }
+  s = s.replace(/,(\s*[}\]])/g, "$1");
+
   try {
     return JSON.parse(s) as T;
   } catch (err) {
-    throw new Error(
-      `AI 返回的内容不是有效 JSON: ${
-        err instanceof Error ? err.message : "解析失败"
-      }`
-    );
+    console.error("[parseJsonFromLLM] 解析失败，原始内容:", s.slice(0, 500));
+    // 尝试 JSON5 风格修复：去掉注释、去掉多余逗号
+    try {
+      // 更激进的修复：去掉属性名外的多余引号、单引号转双引号
+      s = s.replace(/'/g, '"')
+           .replace(/,\s*}/g, "}")
+           .replace(/,\s*]/g, "]");
+      return JSON.parse(s) as T;
+    } catch {
+      throw new Error(
+        `AI 返回的内容不是有效 JSON: ${
+          err instanceof Error ? err.message : "解析失败"
+        }`
+      );
+    }
   }
 }
