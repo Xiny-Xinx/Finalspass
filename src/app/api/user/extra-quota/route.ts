@@ -27,8 +27,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "无效的套餐" }, { status: 400 });
     }
 
-    const priceCents = Math.round(pack.priceAUD * 100); // AUD → cents
-
     // 创建订单
     const order = await createOrder({
       userId: auth.userId,
@@ -40,10 +38,14 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const redirectUrl = `${baseUrl}/payment/result?out_trade_no=${order.outTradeNo}`;
 
-    // 使用 Pro variant + custom_price 创建结算会话
-    const variantId = process.env.LS_VARIANT_PRO || "";
+    // 使用该套餐对应的固定价格 Variant（需先在 LS 后台创建）
+    const variantId = process.env[pack.variantEnv] || "";
+    if (!variantId) {
+      return NextResponse.json({ error: `未配置 ${pack.variantEnv} 环境变量` }, { status: 500 });
+    }
+
     const checkout = await createCheckout(
-      priceCents,
+      undefined, // 不传 custom_price，使用 variant 固定价格
       `FinalsPass 额外配额 ${pack.label}`,
       `额外 ${units} 次 AI 配额，不限使用时间`,
       {

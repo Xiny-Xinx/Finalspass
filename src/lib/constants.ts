@@ -66,10 +66,10 @@ export const GUEST_RPM_LIMIT = Number(process.env.GUEST_RPM_LIMIT) || 10;
 export const USER_RPM_LIMIT = Number(process.env.USER_RPM_LIMIT) || 30;
 
 /** 额外配额购买选项（单位 → 澳元） */
-export const EXTRA_QUOTA_PACKS: { units: number; priceAUD: number; label: string }[] = [
-  { units: 50, priceAUD: 1.99, label: "50 次额外配额" },
-  { units: 150, priceAUD: 4.99, label: "150 次额外配额" },
-  { units: 500, priceAUD: 12.99, label: "500 次额外配额（最值）" },
+export const EXTRA_QUOTA_PACKS: { units: number; priceAUD: number; label: string; variantEnv: string }[] = [
+  { units: 50, priceAUD: 1.99, label: "50 次额外配额", variantEnv: "LS_VARIANT_EXTRA_50" },
+  { units: 150, priceAUD: 4.99, label: "150 次额外配额", variantEnv: "LS_VARIANT_EXTRA_150" },
+  { units: 500, priceAUD: 12.99, label: "500 次额外配额（最值）", variantEnv: "LS_VARIANT_EXTRA_500" },
 ];
 
 /** localStorage 键 */
