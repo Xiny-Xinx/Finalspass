@@ -45,10 +45,10 @@ export async function GET(req: Request) {
 
       const tier = user.tier ?? "free";
       const tierLimit = TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+      const extraQuota = (await redis?.get<number>(`extra_quota:${auth.userId}`)) ?? 0;
 
       return NextResponse.json({
         isLoggedIn: true,
-        // 兼容前端 QuotaInfo 接口
         used: dailyUsed,
         limit: tierLimit,
         remaining: Math.max(0, tierLimit - dailyUsed),
@@ -61,6 +61,7 @@ export async function GET(req: Request) {
         tier,
         tierExpiresAt: user.tierExpiresAt,
         rateLimit: USER_RPM_LIMIT,
+        extraQuota,
       });
     }
 

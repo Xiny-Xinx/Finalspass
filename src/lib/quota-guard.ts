@@ -64,22 +64,31 @@ async function getUserDailyCap(userId: string): Promise<number> {
   return TIER_LIMITS.free;
 }
 
-async function checkUserDailyCap(userId: string): Promise<void> {
+async function checkUserDailyCap(userId: string):
+  Promise<{ usedExtra: boolean; extraRemaining: number }> {
   const redis = await getRedis();
-  if (!redis) return;
+  if (!redis) return { usedExtra: false, extraRemaining: 0 };
 
   const cap = await getUserDailyCap(userId);
   const key = `user:daily:${userId}:${dateKey()}`;
   try {
     const used = (await redis.get<number>(key)) ?? 0;
-    if (used >= cap) {
-      throw Object.assign(
-        new Error(`今日使用次数已达上限（${cap} 次），升级套餐或明日再试`),
-        { statusCode: 429 }
-      );
+    if (used < cap) return { usedExtra: false, extraRemaining: 0 };
+
+    // 每日上限已到，检查额外配额
+    const extraKey = `extra_quota:${userId}`;
+    const extra = (await redis.get<number>(extraKey)) ?? 0;
+    if (extra > 0) {
+      return { usedExtra: true, extraRemaining: extra };
     }
+
+    throw Object.assign(
+      new Error(`今日使用次数已达上限（${cap} 次），可购买额外配额继续使用`),
+      { statusCode: 429 }
+    );
   } catch (err) {
     if (err instanceof Error && (err as any).statusCode === 429) throw err;
+    return { usedExtra: false, extraRemaining: 0 };
   }
 }
 
@@ -153,7 +162,8 @@ export async function withQuota(req: Request) {
 
     const tier = user.tier;
 
-    await checkUserDailyCap(auth.userId);
+    const dailyCheck = await checkUserDailyCap(auth.userId);
+    const usingExtra = dailyCheck.usedExtra;
 
     return {
       userId: auth.userId,
@@ -162,11 +172,22 @@ export async function withQuota(req: Request) {
       tier,
       /** 调用 AI 前检查该模型今日是否已达上限 */
       checkModelCap: async (modelId: string) => checkModelCap(auth.userId, tier, modelId),
-      /** AI 调用后，记录每日用量 */
+      /** AI 调用后，记录每日用量（超额时从额外配额扣减） */
       deduct: async (units: number, modelId?: string) => {
         if (units > 0) {
-          await recordUserDailyUsage(auth.userId, units);
-          // 如有模型 ID，自增该模型的单独计数器
+          if (usingExtra) {
+            // 超额使用：从 extra_quota 扣减，不记入日用量
+            const redis = await getRedis();
+            if (redis) {
+              const ek = `extra_quota:${auth.userId}`;
+              const cur = (await redis.get<number>(ek)) ?? 0;
+              if (cur >= units) await redis.set(ek, cur - units);
+            }
+          } else {
+            // 正常使用：记入日用量
+            await recordUserDailyUsage(auth.userId, units);
+          }
+          // 模型专用计数器（不论是否超额都记）
           if (modelId) {
             const mk = `user:daily:model:${auth.userId}:${dateKey()}:${modelId}`;
             const redis = await getRedis();

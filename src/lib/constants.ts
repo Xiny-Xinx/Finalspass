@@ -65,6 +65,13 @@ export const GUEST_RPM_LIMIT = Number(process.env.GUEST_RPM_LIMIT) || 10;
 /** 速率限制: 每分钟最大请求数（已登录用户） */
 export const USER_RPM_LIMIT = Number(process.env.USER_RPM_LIMIT) || 30;
 
+/** 额外配额购买选项（单位 → 澳元） */
+export const EXTRA_QUOTA_PACKS: { units: number; priceAUD: number; label: string }[] = [
+  { units: 50, priceAUD: 1.99, label: "50 次额外配额" },
+  { units: 150, priceAUD: 4.99, label: "150 次额外配额" },
+  { units: 500, priceAUD: 12.99, label: "500 次额外配额（最值）" },
+];
+
 /** localStorage 键 */
 export const STORAGE_KEY = "finalspass:session:v1";
 

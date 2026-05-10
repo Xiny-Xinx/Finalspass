@@ -143,7 +143,16 @@ async function handleOrderCreated(event: LsWebhookEvent) {
   const lsOrderId = attrs.identifier || "";
   await markOrderSuccess(outTradeNo, lsOrderId);
 
-  if (order.type === "subscription" && order.tier) {
+  if (order.type === "recharge" && order.tokens) {
+    // ── 额外配额 ──
+    const redis = await getRedis();
+    if (redis) {
+      const key = `extra_quota:${order.userId}`;
+      const current = (await redis.get<number>(key)) ?? 0;
+      await redis.set(key, current + order.tokens);
+      console.log(`[ls-webhook] 额外配额 +${order.tokens} userId=${order.userId}`);
+    }
+  } else if (order.type === "subscription" && order.tier) {
     // ── 首次订阅扣款 ──
     // 尝试从 LS 获取实际的续费日期，兜底用 30 天
     let expiresAt = "";
