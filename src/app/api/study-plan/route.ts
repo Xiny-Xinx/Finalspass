@@ -8,29 +8,34 @@ const schema = z.object({
   examName: z.string().min(1, "请输入考试名称"),
   daysUntilExam: z.number().int().min(1, "至少 1 天").max(365),
   chapters: z.string().min(1, "请输入考试范围"),
-  hoursPerDay: z.number().int().min(0.5).max(16).optional().default(3),
+  hoursPerDay: z.number().min(0.5).max(16).optional().default(3),
 });
 
-const SYSTEM = `你是一名专业的考试备考规划师。根据用户提供的考试信息，生成一份详细的备考计划。
+const SYSTEM = `你是一名考试备考规划专家。根据学生提供的信息，生成一份可执行的每日复习计划。
 
-输出格式为 JSON，严格按以下结构，不要包含 Markdown 代码块：
+要求：
+1. 输出严格按以下结构，不要多余内容，不要 Markdown 代码块
+2. 每行开头必须是标记，不要多余空行
 
-{
-  "overview": "整体备考策略概述（2-3句话）",
-  "dailyPlan": [
-    {
-      "day": 1,
-      "title": "Day 1 的标题",
-      "focus": "当天学习重点",
-      "tasks": ["任务1", "任务2", "任务3"],
-      "duration": "时长（小时）"
-    }
-  ],
-  "tips": ["备考建议1", "备考建议2", "备考建议3"],
-  "keyFormulas": "必记公式/要点总结（一段话，50-100字）"
-}
+【整体策略】
+2-3句话概括备考策略
 
-要求：计划切实可行，按天分配，每天任务具体可执行，包含复习和练习的安排。`;
+【第1天】
+标题：简要
+重点：当天学习重点
+任务：任务1 | 任务2 | 任务3
+时长：X小时
+
+【第2天】
+...
+
+【必记要点】
+最重要的公式/概念总结
+
+【备考建议】
+建议1
+建议2
+建议3`;
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest) {
 考试范围：${chapters}
 每天可用时间：${hoursPerDay} 小时
 
-请生成一份详细的备考计划。`;
+请生成备考计划。`;
 
     const res = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -56,7 +61,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }],
-        max_tokens: 3000,
+        max_tokens: 4000,
         temperature: 0.7,
       }),
     });
@@ -68,17 +73,35 @@ export async function POST(req: NextRequest) {
     }
 
     const json = await res.json();
-    const raw = json.choices?.[0]?.message?.content || "{}";
+    const content: string = json.choices?.[0]?.message?.content || "";
 
-    // 解析 JSON
-    let clean = raw.replace(/```(?:json)?/gi, "").trim();
-    const first = clean.indexOf("{");
-    const last = clean.lastIndexOf("}");
-    if (first !== -1 && last > first) clean = clean.slice(first, last + 1);
-    clean = clean.replace(/,(\s*[}\]])/g, "$1");
+    // 服务端解析为结构化数据
+    const overviewMatch = content.match(/【整体策略】\n([\s\S]*?)(?=\n【第\d+天】|$)/);
+    const overview = overviewMatch?.[1]?.trim() || "";
 
-    const plan = JSON.parse(clean);
-    return NextResponse.json(plan);
+    const dayBlocks: { day: number; title: string; focus: string; tasks: string[]; hours: string }[] = [];
+    const dayRegex = /【第(\d+)天】\n(?:标题[：:]\s*(.*?)\n)?(?:重点[：:]\s*(.*?)\n)?(?:任务[：:]\s*(.*?)\n)?(?:时长[：:]\s*(.*?)\n?)/g;
+    let match;
+    while ((match = dayRegex.exec(content)) !== null) {
+      dayBlocks.push({
+        day: parseInt(match[1]),
+        title: match[2]?.trim() || `第${match[1]}天`,
+        focus: match[3]?.trim() || "",
+        tasks: match[4] ? match[4].split("|").map((t: string) => t.trim()).filter(Boolean) : [],
+        hours: match[5]?.trim() || "",
+      });
+    }
+
+    const tipsMatch = content.match(/【备考建议】\n([\s\S]*?)$/);
+    const tips = tipsMatch?.[1]
+      ?.split("\n")
+      .map((t: string) => t.replace(/^\d+[.、]?\s*/, "").trim())
+      .filter(Boolean) || [];
+
+    const formulasMatch = content.match(/【必记要点】\n([\s\S]*?)(?=\n【备考建议】|$)/);
+    const keyFormulas = formulasMatch?.[1]?.trim() || "";
+
+    return NextResponse.json({ overview, dailyPlan: dayBlocks, tips, keyFormulas, raw: content });
   } catch (err) {
     console.error("[study-plan] 错误:", err);
     return NextResponse.json({ error: "生成失败，请重试" }, { status: 500 });
