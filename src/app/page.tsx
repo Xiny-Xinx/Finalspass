@@ -11,7 +11,7 @@ import FlashcardTab from "@/components/FlashcardTab";
 import StudyPlanTab from "@/components/StudyPlanTab";
 import { extractFile } from "@/lib/parser";
 import { extractCards, type Card } from "@/lib/api-client";
-import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY, MODEL_QUOTA_COST } from "@/lib/constants";
+import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY, MODEL_QUOTA_COST, TIER_FEATURES } from "@/lib/constants";
 import { fetchSessions, createSession, loadSessionData, clearAllSessions as clearHistory } from "@/lib/history-client";
 import type { SessionMeta } from "@/lib/store";
 import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, TIER_MODELS, type ModelId } from "@/lib/claude";
@@ -33,6 +33,13 @@ interface QuotaInfo {
   enabled: boolean;
   tier?: string;
   isLoggedIn?: boolean;
+}
+
+// 付费功能列表（免费版不可用）
+const PAID_FEATURES: Tab[] = ["quiz", "flashcard", "studyplan"];
+
+function tabAllowed(tier: string, tab: Tab): boolean {
+  return !PAID_FEATURES.includes(tab) || tier === "pro" || tier === "premium";
 }
 
 const TABS: ReadonlyArray<readonly [Tab, string]> = [
@@ -739,19 +746,21 @@ export default function Page() {
                 gap: 2,
               }}
             >
-              {TABS.map(([id, label]) => (
+              {TABS.map(([id, label]) => {
+                const allowed = tabAllowed(quota?.tier ?? "free", id);
+                return (
                 <button
                   key={id}
                   type="button"
                   role="tab"
                   aria-selected={tab === id}
-                  onClick={() => setTab(id)}
+                  onClick={() => { if (allowed) setTab(id); }}
                   style={{
                     padding: "8px 16px",
                     fontFamily: "monospace",
                     fontSize: "0.75rem",
                     letterSpacing: "0.05em",
-                    cursor: "pointer",
+                    cursor: allowed ? "pointer" : "not-allowed",
                     border: "none",
                     background: tab === id ? "var(--accent-subtle)" : "transparent",
                     color: tab === id ? "var(--accent)" : "var(--muted)",
@@ -762,17 +771,18 @@ export default function Page() {
                     borderRadius: "6px 6px 0 0",
                     transition: "all .2s",
                     fontWeight: tab === id ? 600 : 400,
+                    opacity: allowed ? 1 : 0.5,
                   }}
                   onMouseEnter={(e) => {
-                    if (tab !== id) e.currentTarget.style.background = "var(--accent-glow)";
+                    if (tab !== id && allowed) e.currentTarget.style.background = "var(--accent-glow)";
                   }}
                   onMouseLeave={(e) => {
-                    if (tab !== id) e.currentTarget.style.background = "transparent";
+                    if (tab !== id && allowed) e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  {label}
+                  {label}{!allowed && " 🔒"}
                 </button>
-              ))}
+              );})}
 
               {/* 模型选择 + 文件信息 pill（靠右） */}
               <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -966,8 +976,10 @@ export default function Page() {
             )}
             {tab === "qa" && <QATab ref={qaRef} pptContent={pptContent} cards={cards} model={model} />}
             {tab === "quiz" && <QuizTab pptContent={pptContent} fileName={fileName} model={model} />}
-            {tab === "flashcard" && <FlashcardTab cards={cards} disabled={cards.length === 0} />}
-            {tab === "studyplan" && <StudyPlanTab />}
+            {tab === "flashcard" && !tabAllowed(quota?.tier ?? "free", "flashcard") && <UpgradePrompt />}
+            {tab === "flashcard" && tabAllowed(quota?.tier ?? "free", "flashcard") && <FlashcardTab cards={cards} disabled={cards.length === 0} />}
+            {tab === "studyplan" && !tabAllowed(quota?.tier ?? "free", "studyplan") && <UpgradePrompt />}
+            {tab === "studyplan" && tabAllowed(quota?.tier ?? "free", "studyplan") && <StudyPlanTab />}
           </>
         )}
       </main>
@@ -1625,3 +1637,20 @@ export default function Page() {
     </ErrorBoundary>
   );
 }
+
+// ── 付费功能引导 ──
+function UpgradePrompt() {
+  return (
+    <div style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>🔒</div>
+      <h3 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "0 0 8px" }}>此功能仅限 Pro / Premium 套餐</h3>
+      <p style={{ fontSize: "0.84rem", color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.7 }}>
+        升级套餐即可使用练习测验、智能闪卡和考前速成功能
+      </p>
+      <a href="/account" style={{ display: "inline-block", background: "var(--accent)", color: "white", border: "none", borderRadius: 10, padding: "10px 24px", fontSize: "0.85rem", fontWeight: 600, textDecoration: "none" }}>
+        查看套餐 →
+      </a>
+    </div>
+  );
+}
+

@@ -41,7 +41,10 @@ export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
   if (!auth) return NextResponse.json({ error: "请先登录" }, { status: 401 });
 
+  // 消耗 3 单位配额
+  const { withQuota } = await import("@/lib/quota-guard");
   try {
+    const guard = await withQuota(req);
     const body = await req.json();
     const { examName, daysUntilExam, chapters, hoursPerDay } = schema.parse(body);
 
@@ -101,8 +104,12 @@ export async function POST(req: NextRequest) {
     const formulasMatch = content.match(/【必记要点】\n([\s\S]*?)(?=\n【备考建议】|$)/);
     const keyFormulas = formulasMatch?.[1]?.trim() || "";
 
+    await guard.deduct(3);
     return NextResponse.json({ overview, dailyPlan: dayBlocks, tips, keyFormulas, raw: content });
-  } catch (err) {
+  } catch (err: any) {
+    if (err.statusCode === 429) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     console.error("[study-plan] 错误:", err);
     return NextResponse.json({ error: "生成失败，请重试" }, { status: 500 });
   }

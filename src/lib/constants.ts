@@ -35,6 +35,13 @@ export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
   premium: { "deepseek-v4-pro": 30 },
 };
 
+/** 各套餐可用的功能 */
+export const TIER_FEATURES: Record<string, string[]> = {
+  free: ["cards", "qa"],
+  pro: ["cards", "qa", "quiz", "flashcard", "studyplan"],
+  premium: ["cards", "qa", "quiz", "flashcard", "studyplan"],
+};
+
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
   free: 30,
