@@ -1,125 +1,108 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { Suspense, FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
-/** 内部组件：使用 useSearchParams，需要 Suspense 包裹 */
-function ResetPasswordForm() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? "";
-
+  const [step, setStep] = useState<"email" | "code" | "password">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!token) {
-      setError("缺少重置参数");
-      return;
+  async function sendCode() {
+    if (!email.includes("@")) return;
+    setLoading(true); setErr("");
+    try {
+      const res = await fetch("/api/auth/send-verification", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) setStep("code");
+      else { const d = await res.json(); setErr(d.error || "发送失败"); }
+    } catch { setErr("网络错误"); }
+    setLoading(false);
+  }
+
+  function handleCode(i: number, val: string) {
+    if (val.length > 1) return;
+    const next = [...code]; next[i] = val; setCode(next);
+    if (val && i < 5) {
+      document.querySelector<HTMLInputElement>(`[data-ci="${i+1}"]`)?.focus();
     }
-    setError(null);
-    setLoading(true);
+    if (next.every((d) => d)) verifyCode(next.join(""));
+  }
 
+  async function verifyCode(full: string) {
+    setLoading(true); setErr("");
+    try {
+      const res = await fetch("/api/auth/verify-code", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: full }),
+      });
+      if (res.ok) setStep("password");
+      else { const d = await res.json(); setErr(d.error || "验证失败"); }
+    } catch { setErr("网络错误"); }
+    setLoading(false);
+  }
+
+  async function resetPw(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 6) { setErr("密码至少6位"); return; }
+    if (password !== confirm) { setErr("两次密码不一致"); return; }
+    setLoading(true); setErr("");
     try {
       const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: code.join(""), newPassword: password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "重置失败");
-        return;
-      }
-      setDone(true);
-    } catch {
-      setError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (done) {
-    return (
-      <div>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>密码已重置</h1>
-        <p style={{ color: "var(--muted)", marginBottom: 24 }}>请使用新密码重新登录。</p>
-        <a
-          href="/login"
-          style={{
-            display: "block",
-            textAlign: "center",
-            padding: "10px 0",
-            borderRadius: 8,
-            background: "var(--accent)",
-            color: "#fff",
-            textDecoration: "none",
-            fontSize: "1rem",
-          }}
-        >
-          去登录
-        </a>
-      </div>
-    );
-  }
-
-  if (!token) {
-    return (
-      <div>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: 16 }}>无效链接</h1>
-        <p style={{ color: "var(--muted)" }}>密码重置链接无效，请重新申请。</p>
-        <a href="/forgot-password" style={{ color: "var(--accent)", textDecoration: "none" }}>
-          重新申请
-        </a>
-      </div>
-    );
+      if (res.ok) router.push("/login?reset=1");
+      else setErr(data.error || "重置失败");
+    } catch { setErr("网络错误"); }
+    setLoading(false);
   }
 
   return (
-    <div>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 8 }}>设置新密码</h1>
-      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: "0.9rem" }}>
-        输入你的新密码。
-      </p>
-
-      {error && (
-        <p style={{ color: "var(--danger)", background: "var(--danger-glow)", padding: "8px 12px", borderRadius: 8, fontSize: "0.85rem", marginBottom: 16 }}>
-          {error}
-        </p>
-      )}
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div>
-          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--muted)" }}>
-            新密码（至少 6 位）
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "inherit", fontSize: "1rem", boxSizing: "border-box" }}
-          />
+    <div style={{ minHeight: "100vh", background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 380 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 4px", fontFamily: "'Noto Serif SC', serif", color: "var(--accent)" }}>FinalsPass</h1>
+          <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: 0 }}>
+            {step === "email" ? "输入邮箱获取验证码" : step === "code" ? "输入6位验证码" : "设置新密码"}
+          </p>
         </div>
-        <button type="submit" disabled={loading} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", fontSize: "1rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, marginTop: 8 }}>
-          {loading ? "重置中…" : "重置密码"}
-        </button>
-      </form>
+        {err && <div style={{ fontSize: "0.82rem", color: "var(--danger)", textAlign: "center", marginBottom: 16, padding: "8px 12px", background: "var(--danger-glow)", borderRadius: 8 }}>{err}</div>}
+        {step === "email" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="输入注册邮箱" type="email" style={inputS} />
+            <button onClick={sendCode} disabled={loading || !email.includes("@")} style={btnS(loading || !email.includes("@"))}>{loading ? "发送中…" : "发送验证码"}</button>
+            <button onClick={() => router.push("/login")} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 10, padding: "10px", fontSize: "0.84rem", color: "var(--muted)", cursor: "pointer" }}>返回登录</button>
+          </div>
+        )}
+        {step === "code" && (
+          <div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 16 }}>
+              {code.map((d, i) => (
+                <input key={i} data-ci={i} value={d} onChange={(e) => handleCode(i, e.target.value)} maxLength={1}
+                  style={{ width: 44, height: 48, textAlign: "center", fontSize: "1.2rem", fontWeight: 700, borderRadius: 10, border: "2px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", outline: "none" }} />
+              ))}
+            </div>
+            <button onClick={sendCode} disabled={loading} style={{ width: "100%", background: "none", border: "none", fontSize: "0.78rem", color: "var(--accent)", cursor: "pointer", padding: 4 }}>重新发送</button>
+          </div>
+        )}
+        {step === "password" && (
+          <form onSubmit={resetPw} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="新密码（至少6位）" minLength={6} style={inputS} />
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="确认新密码" style={inputS} />
+            <button type="submit" disabled={loading || password.length < 6 || password !== confirm} style={btnS(loading || password.length < 6 || password !== confirm)}>{loading ? "重置中…" : "重置密码"}</button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
-
-/** 主页面导出：Suspense 包裹 useSearchParams 组件 */
-export default function ResetPasswordPage() {
-  return (
-    <div style={{ maxWidth: 400, margin: "60px auto", padding: "0 20px", fontFamily: "system-ui, sans-serif" }}>
-      <Suspense fallback={<p style={{ color: "var(--muted)" }}>加载中…</p>}>
-        <ResetPasswordForm />
-      </Suspense>
-    </div>
-  );
-}
+const inputS: React.CSSProperties = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.9rem", outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+function btnS(dis: boolean): React.CSSProperties { return { width: "100%", padding: "11px", borderRadius: 10, border: "none", background: dis ? "var(--border)" : "var(--accent)", color: dis ? "var(--muted)" : "white", fontSize: "0.9rem", fontWeight: 600, cursor: dis ? "not-allowed" : "pointer" }; }

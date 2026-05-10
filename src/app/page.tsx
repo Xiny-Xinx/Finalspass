@@ -550,7 +550,7 @@ export default function Page() {
                   {quota.remaining}
                 </text>
               </svg>
-              {quota.extraQuota > 0 && (
+              {(quota.extraQuota ?? 0) > 0 && (
                 <span style={{ fontSize: "0.6rem", color: "var(--success)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
                   +{quota.extraQuota}
                 </span>

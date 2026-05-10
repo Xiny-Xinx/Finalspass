@@ -345,13 +345,26 @@ export default function AccountPage() {
       )}
 
       {/* ── 额外配额 ── */}
-      <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-        <h3 style={{ fontSize: "0.95rem", margin: "0 0 4px", fontWeight: 600 }}>⚡ 额外配额</h3>
+      <div style={{
+        background: "linear-gradient(135deg, var(--accent-subtle), rgba(99,102,241,0.04))",
+        border: "1px solid var(--accent)", borderRadius: 12, padding: 20, marginBottom: 24,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: "1.1rem" }}>⚡</span>
+          <h3 style={{ fontSize: "0.95rem", margin: 0, fontWeight: 600 }}>额外配额</h3>
+          {quota?.extraQuota ? (
+            <span style={{ marginLeft: "auto", fontSize: "0.82rem", fontFamily: "monospace", color: "var(--success)", fontWeight: 600 }}>
+              剩余 {quota.extraQuota} 次
+            </span>
+          ) : null}
+        </div>
         <p style={{ fontSize: "0.78rem", color: "var(--muted)", margin: "0 0 14px" }}>
-          每日额度用完后，可购买额外配额继续使用，不限时间
+          每日额度用完后自动扣减，不限时间，永不过期
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {EXTRA_QUOTA_PACKS.map((pack) => (
+          {EXTRA_QUOTA_PACKS.map((pack) => {
+            const loading = subscribing === `extra_${pack.units}`;
+            return (
             <button
               key={pack.units}
               onClick={async () => {
@@ -368,22 +381,27 @@ export default function AccountPage() {
                 } catch {}
                 setSubscribing(null);
               }}
-              disabled={subscribing === `extra_${pack.units}`}
+              disabled={loading}
               style={{
-                flex: 1, minWidth: 120,
-                background: subscribing === `extra_${pack.units}` ? "var(--border)" : "var(--accent-glow)",
-                border: `1px solid ${subscribing === `extra_${pack.units}` ? "var(--border)" : "var(--accent)"}`,
-                borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "center",
-                transition: "all .15s", opacity: subscribing === `extra_${pack.units}` ? 0.6 : 1,
+                flex: 1, minWidth: 130, position: "relative", overflow: "hidden",
+                background: loading ? "var(--border)" : "var(--card)",
+                border: `2px solid ${loading ? "var(--border)" : "var(--card-border)"}`,
+                borderRadius: 12, padding: "14px 12px 12px", cursor: loading ? "not-allowed" : "pointer",
+                textAlign: "center", transition: "all .2s", opacity: loading ? 0.5 : 1,
               }}
-              onMouseEnter={(e) => { if (subscribing !== `extra_${pack.units}`) { e.currentTarget.style.background = "var(--accent-subtle)"; }}}
-              onMouseLeave={(e) => { if (subscribing !== `extra_${pack.units}`) { e.currentTarget.style.background = "var(--accent-glow)"; }}}
+              onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.transform = "translateY(-2px)"; }}}
+              onMouseLeave={(e) => { if (!loading) { e.currentTarget.style.borderColor = "var(--card-border)"; e.currentTarget.style.transform = "translateY(0)"; }}}
             >
-              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--accent)" }}>+{pack.units}</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: 2 }}>{pack.label.split(" ")[0]}</div>
-              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)", marginTop: 4 }}>A${pack.priceAUD.toFixed(2)}</div>
+              <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--accent)", marginBottom: 2 }}>+{pack.units}</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginBottom: 4 }}>{pack.label.split("（最值")[0]}</div>
+              <div style={{
+                display: "inline-block", background: "var(--accent)", color: "white",
+                borderRadius: 8, padding: "3px 14px", fontSize: "0.85rem", fontWeight: 700,
+              }}>
+                A${pack.priceAUD.toFixed(2)}
+              </div>
             </button>
-          ))}
+          );})}
         </div>
       </div>
 

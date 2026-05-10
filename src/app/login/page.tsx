@@ -48,7 +48,7 @@ export default function LoginPage() {
       }}
     >
       <h1 style={{ fontSize: "1.5rem", marginBottom: 8 }}>登录</h1>
-      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: "0.9rem" }}>
+      <p style={{ color: "var(--accent)", marginBottom: 24, fontSize: "0.9rem" }}>
         登录后可使用已充值的 Token
       </p>
 
@@ -69,7 +69,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--muted)" }}>
+          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--accent)" }}>
             邮箱 / 用户名
           </label>
           <input
@@ -92,7 +92,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--muted)" }}>
+          <label style={{ display: "block", fontSize: "0.85rem", marginBottom: 4, color: "var(--accent)" }}>
             密码
           </label>
           <input
@@ -136,7 +136,7 @@ export default function LoginPage() {
           href="/forgot-password"
           style={{
             textAlign: "center",
-            color: "var(--muted)",
+            color: "var(--accent)",
             fontSize: "0.83rem",
             textDecoration: "none",
             marginTop: 4,
@@ -146,16 +146,16 @@ export default function LoginPage() {
         </a>
       </form>
 
-      <p style={{ textAlign: "center", marginTop: 24, fontSize: "0.85rem", color: "var(--muted)" }}>
+      <p style={{ textAlign: "center", marginTop: 24, fontSize: "0.85rem", color: "var(--accent)" }}>
         还没有账号？{" "}
         <a href="/register" style={{ color: "var(--accent)", textDecoration: "none" }}>
           注册
         </a>
       </p>
-      <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.75rem", color: "var(--muted)" }}>
-        <a href="/privacy" style={{ color: "var(--muted)", textDecoration: "none" }}>隐私</a>
+      <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.75rem", color: "var(--accent)" }}>
+        <a href="/privacy" style={{ color: "var(--accent)", textDecoration: "none" }}>隐私</a>
         <span style={{ margin: "0 8px" }}>·</span>
-        <a href="/terms" style={{ color: "var(--muted)", textDecoration: "none" }}>条款</a>
+        <a href="/terms" style={{ color: "var(--accent)", textDecoration: "none" }}>条款</a>
       </p>
     </div>
   );
