@@ -41,7 +41,7 @@ export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
   free: 30,
-  pro: 220,
+  pro: 150,
   premium: 500,
 };
 
