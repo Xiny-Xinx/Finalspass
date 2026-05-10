@@ -26,9 +26,9 @@ function loadPlan(): { plan: StudyPlan; completed: number[] } | null {
 }
 
 export default function StudyPlanTab() {
-  const [examName, setExamName] = useState("");
-  const [days, setDays] = useState(7);
-  const [chapters, setChapters] = useState("");
+  const [examName, setExamName] = useState("MATH1062 Mathematics 1B");
+  const [days, setDays] = useState(14);
+  const [chapters, setChapters] = useState("微分方程（可分离/线性/二阶）、3D曲线与曲面、偏导数与方向导数、梯度与优化、置信区间与假设检验、线性模型与卡方检验");
   const [hours, setHours] = useState(3);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [completedDays, setCompletedDays] = useState<number[]>([]);
@@ -100,7 +100,7 @@ export default function StudyPlanTab() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
               <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted)", marginBottom: 4, display: "block" }}>考试名称</label>
-              <input value={examName} onChange={(e) => setExamName(e.target.value)} placeholder="如：微积分期末、雅思写作" required style={inputS} />
+              <input value={examName} onChange={(e) => setExamName(e.target.value)} placeholder="如：MATH1062 Mathematics 1B" required style={inputS} />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -114,7 +114,7 @@ export default function StudyPlanTab() {
             </div>
             <div>
               <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--muted)", marginBottom: 4, display: "block" }}>考试范围</label>
-              <textarea value={chapters} onChange={(e) => setChapters(e.target.value)} placeholder="如：第1-5章、微分方程、矩阵运算、近3年真题" required rows={3} style={{ ...inputS, resize: "vertical", fontFamily: "inherit" }} />
+              <textarea value={chapters} onChange={(e) => setChapters(e.target.value)} placeholder="输入考试范围，如：微分方程（可分离/线性/二阶）、3D曲线与曲面、偏导数与方向导数、梯度与优化、置信区间与假设检验、线性模型与卡方检验" required rows={3} style={{ ...inputS, resize: "vertical", fontFamily: "inherit" }} />
             </div>
 
             <button type="submit" disabled={loading}
