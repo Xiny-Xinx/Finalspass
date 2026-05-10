@@ -77,8 +77,12 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   }, [pptContent, count, type, model]);
 
   const select = (qi: number, opt: string) => {
-    if (answers[qi] !== undefined) return;
-    setAnswers((a) => ({ ...a, [qi]: opt }));
+    setAnswers((a) => {
+      if (a[qi] === opt) {
+        const n = { ...a }; delete n[qi]; return n;
+      }
+      return { ...a, [qi]: opt };
+    });
   };
 
   const isCorrect = (q: QuizQuestion, opt: string): boolean => {
@@ -88,7 +92,6 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
 
   const answered = Object.keys(answers).length;
   const correct = questions.reduce((n, q, i) => answers[i] !== undefined && isCorrect(q, answers[i]) ? n + 1 : n, 0);
-  const allDone = questions.length > 0 && answered === questions.length;
   const wrongIndices = questions.map((_, i) => i).filter((i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
 
   const selectStyle: React.CSSProperties = {
@@ -148,10 +151,10 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
         {questions.length > 0 && !reviewWrong && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 80, height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: `${(answered / questions.length) * 100}%`, height: "100%", background: allDone ? "var(--success)" : "var(--accent)", borderRadius: 2, transition: "width .4s ease" }} />
+              <div style={{ width: `${(answered / questions.length) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 2, transition: "width .4s ease" }} />
             </div>
             <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--muted)" }}>
-              {answered}/{questions.length}{allDone && ` · ${correct}正确`}
+              {answered}/{questions.length}
             </span>
           </div>
         )}
@@ -178,18 +181,21 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
         </div>
       )}
 
-      {/* 完成按钮 */}
-      {questions.length > 0 && !allDone && answered > 0 && (
+      {/* 提交按钮 */}
+      {questions.length > 0 && !showResults && answered > 0 && (
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <button onClick={() => { setShowResults(true); }} style={{ background: "none", border: "1px solid var(--accent)", borderRadius: 10, padding: "8px 20px", fontSize: "0.82rem", color: "var(--accent)", cursor: "pointer" }}>
-            提前交卷 →
-          </button>
-        </div>
-      )}
-      {allDone && !showResults && (
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <button onClick={() => setShowResults(true)} style={{ background: "var(--accent)", color: "white", border: "none", borderRadius: 10, padding: "10px 24px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
-            查看成绩 →
+          <button onClick={() => setShowResults(true)}
+            style={{
+              background: answered === questions.length ? "var(--accent)" : "var(--accent-glow)",
+              color: answered === questions.length ? "white" : "var(--accent)",
+              border: answered === questions.length ? "none" : "1px solid var(--accent)",
+              borderRadius: 10, padding: "10px 28px", fontSize: "0.88rem", fontWeight: 600, cursor: "pointer",
+              transition: "all .2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            提交答案 ({answered}/{questions.length})
           </button>
         </div>
       )}
@@ -197,41 +203,45 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
       {/* 题目列表 */}
       {displayQuestions.map((q, di) => {
         const qi = reviewWrong ? questions.indexOf(q) : di;
-        const opts = reviewWrong ? shuffle(q.options) : getOptions(qi);
+        const opts = getOptions(qi);
         return (
           <div key={qi} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 8, padding: "20px 24px", marginBottom: 16, animation: "fadeUp .25s ease" }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontFamily: "monospace", fontSize: "0.68rem", background: "color-mix(in srgb, var(--ink) 8%, var(--paper))", color: "var(--muted)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: 20 }}>
-                {q.type === "choice" ? "单选" : "判断"}
-              </span>
-            </div>
-            <div style={{ fontWeight: 600, fontSize: "0.94rem", marginBottom: 14, lineHeight: 1.55 }}>
+            <span style={{ fontFamily: "monospace", fontSize: "0.68rem", background: "color-mix(in srgb, var(--ink) 8%, var(--paper))", color: "var(--muted)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: 20 }}>
+              {q.type === "choice" ? "单选" : "判断"}
+            </span>
+            <div style={{ fontWeight: 600, fontSize: "0.94rem", marginTop: 8, marginBottom: 14, lineHeight: 1.55 }}>
               {qi + 1}. {q.question}
             </div>
             {opts.map((opt, oi) => {
-              const isAns = answers[qi] !== undefined;
               const chosen = answers[qi] === opt;
-              const correctOpt = isCorrect(q, opt);
-              const bg = !isAns ? "var(--paper)" : correctOpt ? "color-mix(in srgb, var(--success) 12%, var(--paper))" : chosen ? "var(--danger-glow)" : "var(--paper)";
-              const bc = !isAns ? "var(--border)" : correctOpt ? "var(--success)" : chosen ? "var(--danger)" : "var(--border)";
-              const fc = !isAns ? "var(--ink)" : correctOpt ? "var(--success)" : chosen ? "var(--danger)" : "var(--ink)";
               return (
-                <button key={oi} type="button" className={`opt-item${isAns ? " answered" : ""}`} onClick={() => select(qi, opt)} disabled={isAns}
-                  style={{ width: "100%", textAlign: "left", font: "inherit", padding: "10px 14px", border: `1px solid ${bc}`, borderRadius: 6, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, background: bg, color: fc, cursor: isAns ? "default" : "pointer", fontSize: "0.84rem", transition: "all .15s" }}>
-                  <span style={{ fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22, borderRadius: "50%", border: "1px solid currentColor", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <button key={oi} type="button" onClick={() => select(qi, opt)}
+                  style={{
+                    width: "100%", textAlign: "left", font: "inherit", padding: "10px 14px",
+                    border: `1.5px solid ${chosen ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10,
+                    background: chosen ? "var(--accent-subtle)" : "var(--paper)",
+                    color: chosen ? "var(--accent)" : "var(--ink)",
+                    cursor: "pointer", fontSize: "0.84rem",
+                    transition: "all .15s",
+                  }}
+                  onMouseEnter={(e) => { if (!chosen) e.currentTarget.style.borderColor = "var(--accent)"; }}
+                  onMouseLeave={(e) => { if (!chosen) e.currentTarget.style.borderColor = "var(--border)"; }}
+                >
+                  <span style={{
+                    fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22, borderRadius: "50%",
+                    border: `1px solid ${chosen ? "var(--accent)" : "currentColor"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    background: chosen ? "var(--accent)" : "none",
+                    color: chosen ? "white" : "inherit",
+                  }}>
                     {String.fromCharCode(65 + oi)}
                   </span>
                   <span style={{ flex: 1 }}>{opt}</span>
-                  {isAns && correctOpt && <span style={{ fontSize: "1rem" }}>✓</span>}
-                  {isAns && chosen && !correctOpt && <span style={{ fontSize: "1rem" }}>✗</span>}
+                  {chosen && <span style={{ color: "var(--accent)" }}>✓</span>}
                 </button>
               );
             })}
-            {answers[qi] !== undefined && (
-              <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--paper2)", borderRadius: 6, fontSize: "0.8rem", lineHeight: 1.7, color: "var(--muted)", borderLeft: "3px solid var(--border)" }}>
-                💡 {q.explanation}
-              </div>
-            )}
           </div>
         );
       })}
