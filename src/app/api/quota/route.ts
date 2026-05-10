@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getQuota, getClientIP } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getUserById, checkTierExpiry } from "@/lib/user-store";
-import { USER_DAILY_CAP, GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT, TIER_LIMITS } from "@/lib/constants";
+import { GUEST_RPM_LIMIT, USER_RPM_LIMIT, DAILY_TOKEN_LIMIT, TIER_LIMITS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       }
 
       const tier = user.tier ?? "free";
-      const tierLimit = TIER_LIMITS[tier] ?? USER_DAILY_CAP;
+      const tierLimit = TIER_LIMITS[tier] ?? TIER_LIMITS.free;
 
       return NextResponse.json({
         isLoggedIn: true,

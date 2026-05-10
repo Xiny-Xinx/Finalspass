@@ -504,7 +504,7 @@ export default function Page() {
           {/* 配额显示：圆形进度环 */}
           {quota && quota.enabled && (
             <div
-              title={isLoggedIn ? `今日已用 ${quota.used.toLocaleString()} / ${quota.limit.toLocaleString()} tokens` : `已用 ${quota.used.toLocaleString()} tokens`}
+              title={isLoggedIn ? `今日已用 ${quota.used} / ${quota.limit} 次` : `已用 ${quota.used} 次`}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -513,18 +513,11 @@ export default function Page() {
               }}
             >
               <svg width="30" height="30" viewBox="0 0 30 30">
-                {/* 背景圆环 */}
+                <circle cx="15" cy="15" r="11" fill="none" stroke="var(--border)" strokeWidth="3" />
                 <circle
                   cx="15" cy="15" r="11"
                   fill="none"
-                  stroke="var(--border)"
-                  strokeWidth="3"
-                />
-                {/* 进度弧 */}
-                <circle
-                  cx="15" cy="15" r="11"
-                  fill="none"
-                  stroke={quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)"}
+                  stroke={quota.remaining <= 10 ? "var(--accent)" : "var(--muted)"}
                   strokeWidth="3"
                   strokeDasharray={`${(quota.used / quota.limit) * 69.12} 69.12`}
                   strokeDashoffset="0"
@@ -532,19 +525,18 @@ export default function Page() {
                   transform="rotate(-90, 15, 15)"
                   style={{ transition: "stroke-dasharray .3s ease, stroke .3s ease" }}
                 />
-                {/* 中心文字 */}
                 <text
                   x="15" y="19"
                   textAnchor="middle"
-                  fill={quota.remaining <= 10000 ? "var(--accent)" : "var(--muted)"}
+                  fill={quota.remaining <= 10 ? "var(--accent)" : "var(--muted)"}
                   fontSize="9"
                   fontFamily="monospace"
                   fontWeight={600}
                 >
-                  {(quota.remaining / 1000).toFixed(0)}
+                  {quota.remaining}
                 </text>
               </svg>
-              {quota.remaining <= 5000 && (
+              {quota.remaining <= 5 && (
                 <span style={{ fontSize: "0.6rem", color: "var(--accent)", fontFamily: "monospace" }}>
                   即将用完
                 </span>
@@ -1205,7 +1197,7 @@ export default function Page() {
                     opacity: 0.7,
                   }}
                 >
-                  今日 {(quota.used / 1000).toFixed(0)}k / {(quota.limit / 1000).toFixed(0)}k tokens
+                  今日 {quota.used} / {quota.limit} 次
                 </div>
               )}
 

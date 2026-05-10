@@ -303,7 +303,7 @@ export default function AccountPage() {
             }}
           >
             <span>今日用量</span>
-            <span>{(dailyUsed / 1000).toFixed(0)}K / {(dailyCap / 1000).toFixed(0)}K</span>
+            <span>{dailyUsed} / {dailyCap} 次</span>
           </div>
           <div
             style={{
@@ -384,7 +384,7 @@ export default function AccountPage() {
           name="免费版"
           price="$0"
           priceLabel="永久免费"
-          dailyLimit="30K tokens/天"
+          dailyLimit="20次/天"
           models="V4 Flash + V3"
           restricted={restrictedLabels}
           subscribed={currentTier === "free"}
@@ -397,7 +397,7 @@ export default function AccountPage() {
           name="Pro"
           price="A$8.99"
           priceLabel="/月"
-          dailyLimit="300K tokens/天"
+          dailyLimit="200次/天"
           models="全部模型"
           restricted={[]}
           subscribed={currentTier === "pro"}
@@ -411,7 +411,7 @@ export default function AccountPage() {
           name="Premium"
           price="A$18.49"
           priceLabel="/月"
-          dailyLimit="1M tokens/天"
+          dailyLimit="500次/天"
           models="全部模型"
           restricted={[]}
           subscribed={currentTier === "premium"}

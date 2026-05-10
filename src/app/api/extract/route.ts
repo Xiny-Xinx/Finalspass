@@ -4,6 +4,7 @@ import { chat, parseJsonFromLLM, DEFAULT_MODEL, type ModelId } from "@/lib/claud
 import { errorResponse } from "@/lib/errors";
 import { MAX_EXTRACT_CHARS } from "@/lib/constants";
 import { withQuota } from "@/lib/quota-guard";
+import { EXTRACT_QUOTA_COST } from "@/lib/constants";
 
 const requestSchema = z.object({
   content: z.string().min(1, "内容为空"),
@@ -58,7 +59,7 @@ ${content.slice(0, MAX_EXTRACT_CHARS)}`;
     const data = responseSchema.parse(parsed);
 
     // 自动扣除 tokens（登录用户扣余额，游客扣每日限额）
-    await guard.deduct(usage.input_tokens + usage.output_tokens);
+    await guard.deduct(EXTRACT_QUOTA_COST);
 
     return NextResponse.json({ cards: data.cards });
   } catch (error: unknown) {

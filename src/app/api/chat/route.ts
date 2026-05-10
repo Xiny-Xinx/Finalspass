@@ -3,7 +3,7 @@ import { z } from "zod";
 import { chat, chatStream, DEFAULT_MODEL, type ModelId } from "@/lib/claude";
 import { errorResponse } from "@/lib/errors";
 import { MAX_CHAT_HISTORY, MAX_QA_CONTEXT_CHARS } from "@/lib/constants";
-import { withQuota } from "@/lib/quota-guard";
+import { withQuota, getQuotaCost } from "@/lib/quota-guard";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -66,15 +66,17 @@ export async function POST(req: NextRequest) {
     const trimmedHistory =
       mode === "detail" ? [] : history.slice(-MAX_CHAT_HISTORY);
 
+    const quotaCost = getQuotaCost(model);
+
     // 流式模式
     if (stream) {
       const readable = await chatStream(question, {
         system,
         history: trimmedHistory,
         model: model as ModelId,
-        onUsage(usage) {
-          // 流结束后自动扣除 tokens
-          guard.deduct(usage.input_tokens + usage.output_tokens);
+        onUsage() {
+          // 流结束后自动扣除配额（按模型固定成本）
+          guard.deduct(quotaCost);
         },
       });
 
@@ -94,8 +96,8 @@ export async function POST(req: NextRequest) {
       model: model as ModelId,
     });
 
-    // 自动扣除 tokens
-    await guard.deduct(usage.input_tokens + usage.output_tokens);
+    // 自动扣除配额（按模型固定成本，不计实际 token 消耗）
+    await guard.deduct(quotaCost);
 
     return NextResponse.json({ answer });
   } catch (error: unknown) {

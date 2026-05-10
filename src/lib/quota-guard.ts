@@ -21,11 +21,13 @@ import { deductUserBalance, getUserById } from "./user-store";
 import { checkTokenBudget, recordTokens, getClientIP } from "./rate-limit";
 import { checkGuestRateLimit, checkUserRateLimit } from "./rate-limiter";
 import {
+  MODEL_QUOTA_COST,
   MIN_REQUEST_TOKENS,
-  USER_DAILY_CAP,
   GUEST_RPM_LIMIT,
   USER_RPM_LIMIT,
   TIER_LIMITS,
+  EXTRACT_QUOTA_COST,
+  QUIZ_QUOTA_COST,
 } from "./constants";
 
 export type QuotaGuard = Awaited<ReturnType<typeof withQuota>>;
@@ -57,16 +59,14 @@ async function getRedis() {
 }
 
 /**
- * 检查已登录用户每日 token 消耗上限
+ * 检查已登录用户每日配额上限
  */
 async function getUserDailyCap(userId: string): Promise<number> {
   try {
     const user = await getUserById(userId);
-    if (user) {
-      return TIER_LIMITS[user.tier] ?? USER_DAILY_CAP;
-    }
-  } catch { /* 降级使用默认值 */ }
-  return USER_DAILY_CAP;
+    if (user) return TIER_LIMITS[user.tier] ?? TIER_LIMITS.free;
+  } catch {}
+  return TIER_LIMITS.free;
 }
 
 async function checkUserDailyCap(userId: string): Promise<void> {
@@ -79,34 +79,28 @@ async function checkUserDailyCap(userId: string): Promise<void> {
     const used = (await redis.get<number>(key)) ?? 0;
     if (used >= cap) {
       throw Object.assign(
-        new Error(`今日 Token 消耗已达上限（${cap.toLocaleString()}），升级套餐或明日再试`),
+        new Error(`今日使用次数已达上限（${cap} 次），升级套餐或明日再试`),
         { statusCode: 429 }
       );
     }
   } catch (err) {
     if (err instanceof Error && (err as any).statusCode === 429) throw err;
-    // Redis 出错不阻塞
   }
 }
 
-/**
- * 记录已登录用户每日 token 消耗
- */
-async function recordUserDailyUsage(userId: string, tokens: number): Promise<void> {
+async function recordUserDailyUsage(userId: string, units: number): Promise<void> {
   const redis = await getRedis();
-  if (!redis || tokens <= 0) return;
+  if (!redis || units <= 0) return;
 
   const key = `user:daily:${userId}:${dateKey()}`;
   try {
     const ttl = await redis.ttl(key);
     if (ttl === -2) {
-      await redis.set(key, tokens, { ex: 86400 }); // 24 小时过期
+      await redis.set(key, units, { ex: 86400 });
     } else {
-      await redis.incrby(key, tokens);
+      await redis.incrby(key, units);
     }
-  } catch {
-    // 静默
-  }
+  } catch {}
 }
 
 function dateKey(): string {
@@ -114,47 +108,38 @@ function dateKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** 根据模型 ID 获取单次请求的配额成本 */
+export function getQuotaCost(model?: string): number {
+  if (model && MODEL_QUOTA_COST[model]) return MODEL_QUOTA_COST[model];
+  return 1; // 默认 1 单位
+}
+
 /**
- * 在 AI 调用前检查配额，返回一个 deduct 函数用于调用后扣除
- *
- * 三层检查：
- *   1. 速率限制
- *   2. 最低 token 预检（至少 MIN_REQUEST_TOKENS）
- *   3. 余额/限额检查
+ * 在 AI 调用前检查配额，返回 deduct 函数用于调用后扣减配额
  */
 export async function withQuota(req: Request) {
   const ip = getClientIP(req);
   const auth = getAuthUser(req);
 
   if (auth) {
-    // ── 已登录用户 ──
-    // 1. 速率限制
     const rateCheck = await checkUserRateLimit(auth.userId, USER_RPM_LIMIT);
     if (!rateCheck.allowed) {
-      throw Object.assign(
-        new Error("请求过于频繁，请稍后再试"),
-        { statusCode: 429 }
-      );
+      throw Object.assign(new Error("请求过于频繁，请稍后再试"), { statusCode: 429 });
     }
 
-    // 2. 查用户
     const user = await getUserById(auth.userId);
     if (!user) {
       throw Object.assign(new Error("用户不存在"), { statusCode: 401 });
     }
 
-    // 3. 检查用户套餐类型，决定以哪个维度限制
     const hasPaidTier = user.tier === "pro" || user.tier === "premium";
 
     if (hasPaidTier) {
-      // 付费套餐用户：按每日上限控制，不检查 token 余额
       await checkUserDailyCap(auth.userId);
     } else {
-      // 免费用户：先检查余额，余额不足时走 IP 每日限额
       if (user.balance < MIN_REQUEST_TOKENS) {
         await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
       }
-      // 每日上限（免费用户 30K）
       await checkUserDailyCap(auth.userId);
     }
 
@@ -163,19 +148,17 @@ export async function withQuota(req: Request) {
       ip,
       isLoggedIn: true as const,
       tier: user.tier,
-      /** AI 调用后，扣除实际消耗的 token 数 */
-      deduct: async (tokens: number) => {
-        if (tokens > 0) {
+      /** AI 调用后，扣除实际消耗的配额（单位：次） */
+      deduct: async (units: number) => {
+        if (units > 0) {
           if (hasPaidTier) {
-            // 付费套餐：只记录每日消耗，不扣余额
-            await recordUserDailyUsage(auth.userId, tokens);
+            await recordUserDailyUsage(auth.userId, units);
           } else {
-            // 免费用户：从余额扣减（余额不足时静默跳过）
-            const result = await deductUserBalance(auth.userId, tokens);
+            const result = await deductUserBalance(auth.userId, units * 1000);
             if (!result.ok) {
-              console.error(`[quota] 扣减失败 userId=${auth.userId} tokens=${tokens}: ${result.error}`);
+              console.error(`[quota] 扣减失败 userId=${auth.userId} units=${units}: ${result.error}`);
             }
-            await recordUserDailyUsage(auth.userId, tokens);
+            await recordUserDailyUsage(auth.userId, units);
           }
         }
       },
@@ -183,25 +166,20 @@ export async function withQuota(req: Request) {
   }
 
   // ── 未登录游客 ──
-  // 1. 速率限制
   const guestRateCheck = await checkGuestRateLimit(ip, GUEST_RPM_LIMIT);
   if (!guestRateCheck.allowed) {
-    throw Object.assign(
-      new Error("请求过于频繁，请稍后再试"),
-      { statusCode: 429 }
-    );
+    throw Object.assign(new Error("请求过于频繁，请稍后再试"), { statusCode: 429 });
   }
 
-  // 2. 预检：每日限额是否还有至少 MIN_REQUEST_TOKENS
-  const quota = await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
+  await checkTokenBudget(ip, MIN_REQUEST_TOKENS);
 
   return {
     userId: null,
     ip,
     isLoggedIn: false as const,
-    deduct: async (tokens: number) => {
-      if (tokens > 0) {
-        await recordTokens(ip, tokens);
+    deduct: async (units: number) => {
+      if (units > 0) {
+        await recordTokens(ip, units * 1000);
       }
     },
   };

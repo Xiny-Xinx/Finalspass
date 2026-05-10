@@ -16,14 +16,26 @@ export const MAX_DETAIL_CONTEXT_CHARS = 3000;
 /** 多轮对话保留的历史消息条数(单数表示成对) */
 export const MAX_CHAT_HISTORY = 10;
 
-/** 每日 API Token 限额(免费用户)。可通过环境变量 QUOTA_TOKEN_LIMIT 覆盖 */
-export const DAILY_TOKEN_LIMIT = Number(process.env.QUOTA_TOKEN_LIMIT) || 30000;
+/** 每个 AI 请求消耗的配额单位（按模型区分） */
+export const MODEL_QUOTA_COST: Record<string, number> = {
+  "deepseek-v4-flash": 1,
+  "deepseek-chat": 2,
+  "deepseek-v4-pro": 5,
+  "claude-sonnet-4-20250514": 10,
+};
 
-/** 各套餐的每日限额 */
+/** 非聊天类请求的固定配额消耗（提取、测验等） */
+export const EXTRACT_QUOTA_COST = 5;
+export const QUIZ_QUOTA_COST = 3;
+
+/** 未登录游客每日免费配额（单位：次） */
+export const DAILY_TOKEN_LIMIT = 20;
+
+/** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
-  free: 30000,
-  pro: 300000,
-  premium: 1000000,
+  free: 20,
+  pro: 200,
+  premium: 500,
 };
 
 /** 各套餐的价格（澳元/月） */
