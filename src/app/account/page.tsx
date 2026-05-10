@@ -384,7 +384,7 @@ export default function AccountPage() {
           name="免费版"
           price="$0"
           priceLabel="永久免费"
-          dailyLimit="20次/天"
+          dailyLimit="30次/天"
           models="V4 Flash + V3"
           restricted={restrictedLabels}
           subscribed={currentTier === "free"}
@@ -397,7 +397,7 @@ export default function AccountPage() {
           name="Pro"
           price="A$8.99"
           priceLabel="/月"
-          dailyLimit="200次/天"
+          dailyLimit="400次/天"
           models="全部模型"
           restricted={[]}
           subscribed={currentTier === "pro"}
@@ -411,7 +411,7 @@ export default function AccountPage() {
           name="Premium"
           price="A$18.49"
           priceLabel="/月"
-          dailyLimit="500次/天"
+          dailyLimit="1000次/天"
           models="全部模型"
           restricted={[]}
           subscribed={currentTier === "premium"}

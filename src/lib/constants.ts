@@ -29,13 +29,13 @@ export const EXTRACT_QUOTA_COST = 5;
 export const QUIZ_QUOTA_COST = 3;
 
 /** 未登录游客每日免费配额（单位：次） */
-export const DAILY_TOKEN_LIMIT = 20;
+export const DAILY_TOKEN_LIMIT = 30;
 
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
-  free: 20,
-  pro: 200,
-  premium: 500,
+  free: 30,
+  pro: 400,
+  premium: 1000,
 };
 
 /** 各套餐的价格（澳元/月） */
