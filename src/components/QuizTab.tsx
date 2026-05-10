@@ -93,42 +93,12 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const answered = Object.keys(answers).length;
   const correct = questions.reduce((n, q, i) => answers[i] !== undefined && isCorrect(q, answers[i]) ? n + 1 : n, 0);
   const wrongIndices = questions.map((_, i) => i).filter((i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
+  const pct = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
 
   const selectStyle: React.CSSProperties = {
     border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "6px 10px",
     fontSize: "0.8rem", background: "var(--card)", color: "var(--ink)", cursor: "pointer",
   };
-
-  // ── 结果页面 ──
-  if (showResults && questions.length > 0) {
-    const pct = Math.round((correct / questions.length) * 100);
-    const wrongOnes = questions.filter((_, i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
-    return (
-      <div style={{ maxWidth: 480, margin: "0 auto" }}>
-        {/* 成绩卡片 */}
-        <div style={{
-          background: "linear-gradient(135deg, var(--accent), #6366f1)", borderRadius: 16, padding: 28,
-          textAlign: "center", color: "white", marginBottom: 20,
-        }}>
-          <div style={{ fontSize: "3rem", marginBottom: 8 }}>{pct >= 80 ? "🎉" : pct >= 50 ? "💪" : "📚"}</div>
-          <div style={{ fontSize: "2.5rem", fontWeight: 800 }}>{correct}/{questions.length}</div>
-          <div style={{ fontSize: "0.85rem", opacity: 0.8, marginTop: 4 }}>{pct}% 正确率</div>
-          <div style={{ marginTop: 12, height: 6, background: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: "white", borderRadius: 3, transition: "width .5s ease" }} />
-          </div>
-        </div>
-
-        {/* 操作按钮 */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-          <button onClick={() => { setShowResults(false); }} style={{ flex: 1, background: "none", border: "1px solid var(--border)", borderRadius: 10, padding: "10px", fontSize: "0.82rem", color: "var(--muted)", cursor: "pointer" }}>查看详情</button>
-          {wrongIndices.length > 0 && (
-            <button onClick={() => { setReviewWrong(true); setShowResults(false); }} style={{ flex: 1, background: "var(--danger-glow)", border: "1px solid var(--danger)", borderRadius: 10, padding: "10px", fontSize: "0.82rem", color: "var(--danger)", cursor: "pointer" }}>复习错题 ({wrongIndices.length})</button>
-          )}
-          <button onClick={() => generate()} style={{ flex: 1, background: "var(--accent)", color: "white", border: "none", borderRadius: 10, padding: "10px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}>再来一套</button>
-        </div>
-      </div>
-    );
-  }
 
   const displayQuestions = reviewWrong ? questions.filter((_, i) => wrongIndices.includes(i)) : questions;
 
@@ -183,20 +153,53 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
 
       {/* 提交按钮 */}
       {questions.length > 0 && !showResults && answered > 0 && (
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
           <button onClick={() => setShowResults(true)}
             style={{
-              background: answered === questions.length ? "var(--accent)" : "var(--accent-glow)",
-              color: answered === questions.length ? "white" : "var(--accent)",
-              border: answered === questions.length ? "none" : "1px solid var(--accent)",
-              borderRadius: 10, padding: "10px 28px", fontSize: "0.88rem", fontWeight: 600, cursor: "pointer",
-              transition: "all .2s",
+              background: "var(--accent)", color: "white", border: "none",
+              borderRadius: 12, padding: "12px 36px", fontSize: "0.9rem", fontWeight: 600,
+              cursor: "pointer", transition: "opacity .2s",
+              boxShadow: "0 2px 12px rgba(37,99,235,0.25)",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
             提交答案 ({answered}/{questions.length})
           </button>
+        </div>
+      )}
+
+      {/* 批改结果 */}
+      {showResults && (
+        <div style={{ marginBottom: 24 }}>
+          {/* 成绩概览 */}
+          <div style={{
+            background: "linear-gradient(135deg, var(--accent), #6366f1)", borderRadius: 16,
+            padding: "20px 24px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16,
+          }}>
+            <div style={{ fontSize: "2rem" }}>{pct >= 80 ? "🎉" : pct >= 50 ? "💪" : "📚"}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "white" }}>{correct}/{questions.length}</div>
+              <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.8)", marginTop: 2 }}>{pct}% 正确率</div>
+              <div style={{ marginTop: 8, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: "white", borderRadius: 2, transition: "width .5s ease" }} />
+              </div>
+            </div>
+          </div>
+
+          {/* 操作 */}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => generate()} style={{
+              flex: 1, background: "var(--accent)", color: "white", border: "none",
+              borderRadius: 10, padding: "10px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer",
+            }}>再练一套</button>
+            {wrongIndices.length > 0 && (
+              <button onClick={() => { setShowResults(false); setReviewWrong(true); }} style={{
+                flex: 1, background: "var(--danger-glow)", color: "var(--danger)", border: "1px solid var(--danger)",
+                borderRadius: 10, padding: "10px", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer",
+              }}>错题再练 ({wrongIndices.length})</button>
+            )}
+          </div>
         </div>
       )}
 
@@ -214,6 +217,34 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
             </div>
             {opts.map((opt, oi) => {
               const chosen = answers[qi] === opt;
+              if (showResults) {
+                // 批改模式
+                const isCorrectOpt = isCorrect(q, opt);
+                const wrongChosen = chosen && !isCorrectOpt;
+                return (
+                  <div key={oi} style={{
+                    width: "100%", padding: "10px 14px",
+                    border: `1.5px solid ${isCorrectOpt ? "var(--success)" : wrongChosen ? "var(--danger)" : "var(--border)"}`,
+                    borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10,
+                    background: isCorrectOpt ? "color-mix(in srgb, var(--success) 8%, var(--paper))" : wrongChosen ? "var(--danger-glow)" : "var(--paper)",
+                    color: isCorrectOpt ? "var(--success)" : wrongChosen ? "var(--danger)" : "var(--ink)",
+                    fontSize: "0.84rem",
+                  }}>
+                    <span style={{ fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22, borderRadius: "50%",
+                      border: `1px solid ${isCorrectOpt ? "var(--success)" : wrongChosen ? "var(--danger)" : "var(--border)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      background: isCorrectOpt ? "var(--success)" : wrongChosen ? "var(--danger)" : "none",
+                      color: (isCorrectOpt || wrongChosen) ? "white" : "inherit",
+                    }}>
+                      {String.fromCharCode(65 + oi)}
+                    </span>
+                    <span style={{ flex: 1 }}>{opt}</span>
+                    {isCorrectOpt && <span style={{ fontSize: "1rem" }}>✓</span>}
+                    {wrongChosen && <span style={{ fontSize: "1rem" }}>✗</span>}
+                  </div>
+                );
+              }
+              // 答题模式
               return (
                 <button key={oi} type="button" onClick={() => select(qi, opt)}
                   style={{
@@ -222,15 +253,14 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
                     borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10,
                     background: chosen ? "var(--accent-subtle)" : "var(--paper)",
                     color: chosen ? "var(--accent)" : "var(--ink)",
-                    cursor: "pointer", fontSize: "0.84rem",
-                    transition: "all .15s",
+                    cursor: "pointer", fontSize: "0.84rem", transition: "all .15s",
                   }}
                   onMouseEnter={(e) => { if (!chosen) e.currentTarget.style.borderColor = "var(--accent)"; }}
                   onMouseLeave={(e) => { if (!chosen) e.currentTarget.style.borderColor = "var(--border)"; }}
                 >
                   <span style={{
-                    fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22, borderRadius: "50%",
-                    border: `1px solid ${chosen ? "var(--accent)" : "currentColor"}`,
+                    fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22,
+                    borderRadius: "50%", border: `1px solid ${chosen ? "var(--accent)" : "currentColor"}`,
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                     background: chosen ? "var(--accent)" : "none",
                     color: chosen ? "white" : "inherit",
@@ -238,10 +268,14 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
                     {String.fromCharCode(65 + oi)}
                   </span>
                   <span style={{ flex: 1 }}>{opt}</span>
-                  {chosen && <span style={{ color: "var(--accent)" }}>✓</span>}
                 </button>
               );
             })}
+            {showResults && (
+              <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--paper2)", borderRadius: 6, fontSize: "0.8rem", lineHeight: 1.7, color: "var(--muted)", borderLeft: "3px solid var(--border)" }}>
+                💡 {q.explanation}
+              </div>
+            )}
           </div>
         );
       })}
