@@ -28,6 +28,7 @@ export default function AdminMessagesPage() {
   const [announceText, setAnnounceText] = useState("");
   const [announceMsg, setAnnounceMsg] = useState("");
   const [grantEmail, setGrantEmail] = useState("");
+  const [grantDays, setGrantDays] = useState(30);
   const [granting, setGranting] = useState(false);
   const [grantMsg, setGrantMsg] = useState("");
 
@@ -59,10 +60,10 @@ export default function AdminMessagesPage() {
     try {
       const res = await fetch("/api/admin/grant-pro", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: grantEmail.trim() }),
+        body: JSON.stringify({ email: grantEmail.trim(), days: grantDays }),
       });
       const data = await res.json();
-      setGrantMsg(res.ok ? `✅ 已赠送 Pro 至 ${data.email}` : `❌ ${data.error}`);
+      setGrantMsg(res.ok ? `✅ 已赠送 ${data.email} ${grantDays}天 Pro` : `❌ ${data.error}`);
     } catch { setGrantMsg("❌ 网络错误"); }
     setGranting(false);
     setTimeout(() => setGrantMsg(""), 4000);
@@ -128,13 +129,16 @@ export default function AdminMessagesPage() {
         {announceMsg && <span style={{ fontSize: "0.72rem", color: "var(--success)" }}>{announceMsg}</span>}
       </div>
       {/* ── 赠送 Pro ── */}
-      <div style={{ padding: "8px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "rgba(52,211,153,0.04)" }}>
+      <div style={{ padding: "8px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "rgba(52,211,153,0.04)", flexWrap: "wrap" }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap" }}>🎁 送Pro</span>
-        <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="输入用户邮箱…"
-          style={{ width: 260, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+        <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="用户邮箱…"
+          style={{ width: 220, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+        <input type="number" value={grantDays} onChange={(e) => setGrantDays(Number(e.target.value))} min={1} max={3650}
+          style={{ width: 60, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none", textAlign: "center" }} />
+        <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>天</span>
         <button onClick={grantPro} disabled={granting}
-          style={{ background: granting ? "var(--border)" : "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: granting ? "not-allowed" : "pointer", fontWeight: 500, opacity: granting ? 0.6 : 1 }}>{granting ? "赠送中…" : "赠送 Pro"}</button>
-        {grantMsg && <span style={{ fontSize: "0.72rem", color: grantMsg.includes("成功") ? "var(--success)" : "var(--danger)" }}>{grantMsg}</span>}
+          style={{ background: granting ? "var(--border)" : "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: granting ? "not-allowed" : "pointer", fontWeight: 500, opacity: granting ? 0.6 : 1 }}>{granting ? "赠送中…" : "赠送"}</button>
+        {grantMsg && <span style={{ fontSize: "0.72rem", color: grantMsg.startsWith("✅") ? "var(--success)" : "var(--danger)" }}>{grantMsg}</span>}
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

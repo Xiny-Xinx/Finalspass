@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { email } = body;
+  const { email, days } = body;
   if (!email) return NextResponse.json({ error: "请输入邮箱" }, { status: 400 });
 
   const redis = await getRedis();
@@ -45,9 +45,11 @@ export async function POST(req: NextRequest) {
 
   const user = typeof raw === "string" ? JSON.parse(raw) : raw;
   user.tier = "pro";
-  user.tierExpiresAt = new Date(Date.now() + 365 * 86400000).toISOString();
+  const grantDays = Math.min(Math.max(days || 365, 1), 3650);
+  user.tier = "pro";
+  user.tierExpiresAt = new Date(Date.now() + grantDays * 86400000).toISOString();
   user.verified = true;
 
   await redis.set(`user:${userId}`, JSON.stringify(user));
-  return NextResponse.json({ success: true, email, tier: "pro" });
+  return NextResponse.json({ success: true, email, tier: "pro", days: grantDays });
 }
