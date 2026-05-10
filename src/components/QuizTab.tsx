@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { generateQuiz, type QuizQuestion } from "@/lib/api-client";
 import { saveQuizState, loadQuizState, clearQuizState } from "@/lib/store";
 import type { ModelId } from "@/lib/claude";
@@ -12,6 +12,15 @@ interface QuizTabProps {
   model?: ModelId;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const [count, setCount] = useState<number>(5);
   const [type, setType] = useState<QuizType>("mixed");
@@ -19,9 +28,16 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timedMode, setTimedMode] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [showResults, setShowResults] = useState(false);
+  const [reviewWrong, setReviewWrong] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(0);
+  const [shuffledOptions, setShuffledOptions] = useState<string[][]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restoredRef = useRef(false);
 
-  // Restore quiz state on mount
+  // Restore quiz state
   useEffect(() => {
     if (!fileName || restoredRef.current) return;
     restoredRef.current = true;
@@ -31,36 +47,53 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
       setAnswers(saved.answers);
       setType(saved.type);
       setCount(saved.count);
+      setShuffledOptions(saved.questions.map((q) => shuffle(q.options)));
     }
   }, [fileName]);
 
-  // Auto-save progress
-  const persistKey = fileName;
+  // Auto-save
   useEffect(() => {
-    if (!persistKey || questions.length === 0) return;
-    saveQuizState(persistKey, { type, count, questions, answers });
-  }, [persistKey, type, count, questions, answers]);
+    if (!fileName || questions.length === 0) return;
+    saveQuizState(fileName, { type, count, questions, answers });
+  }, [fileName, type, count, questions, answers]);
 
-  const generate = async () => {
+  // Timer countdown
+  useEffect(() => {
+    if (!timedMode || timeLeft <= 0) return;
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) { clearInterval(timerRef.current!); return 0; }
+        return t - 1;
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [timedMode, timeLeft]);
+
+  function getOptions(qi: number): string[] {
+    return shuffledOptions[qi] || questions[qi]?.options || [];
+  }
+
+  const generate = useCallback(async (mins = 0) => {
     setLoading(true);
     setQuestions([]);
     setAnswers({});
     setError(null);
+    setShowResults(false);
+    setReviewWrong(false);
+    setTimerMinutes(mins);
+    setTimeLeft(mins * 60);
     if (fileName) clearQuizState(fileName);
     try {
-      const data = await generateQuiz({
-        content: pptContent,
-        count,
-        type,
-        model,
-      });
+      const data = await generateQuiz({ content: pptContent, count, type, model });
       setQuestions(data.questions);
+      setShuffledOptions(data.questions.map((q) => shuffle(q.options)));
+      if (mins > 0) setTimedMode(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "生成失败");
     } finally {
       setLoading(false);
     }
-  };
+  }, [pptContent, count, type, model]);
 
   const select = (qi: number, opt: string) => {
     if (answers[qi] !== undefined) return;
@@ -72,317 +105,174 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
     return opt === q.answer || norm(opt) === norm(q.answer);
   };
 
-  // 进度统计
   const answered = Object.keys(answers).length;
-  const correct = questions.reduce(
-    (n, q, i) =>
-      answers[i] !== undefined && isCorrect(q, answers[i]) ? n + 1 : n,
-    0
-  );
+  const correct = questions.reduce((n, q, i) => answers[i] !== undefined && isCorrect(q, answers[i]) ? n + 1 : n, 0);
   const allDone = questions.length > 0 && answered === questions.length;
-  const pct = questions.length > 0 ? (answered / questions.length) * 100 : 0;
+  const wrongIndices = questions.map((_, i) => i).filter((i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
 
   const selectStyle: React.CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-sm)",
-    padding: "6px 10px",
-    fontSize: "0.8rem",
-    background: "var(--card)",
-    color: "var(--ink)",
-    cursor: "pointer",
+    border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "6px 10px",
+    fontSize: "0.8rem", background: "var(--card)", color: "var(--ink)", cursor: "pointer",
   };
+
+  // ⏰ 倒计时格式
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  // ── 结果页面 ──
+  if (showResults && questions.length > 0) {
+    const pct = Math.round((correct / questions.length) * 100);
+    const wrongOnes = questions.filter((_, i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
+    return (
+      <div style={{ maxWidth: 480, margin: "0 auto" }}>
+        {/* 成绩卡片 */}
+        <div style={{
+          background: "linear-gradient(135deg, var(--accent), #6366f1)", borderRadius: 16, padding: 28,
+          textAlign: "center", color: "white", marginBottom: 20,
+        }}>
+          <div style={{ fontSize: "3rem", marginBottom: 8 }}>{pct >= 80 ? "🎉" : pct >= 50 ? "💪" : "📚"}</div>
+          <div style={{ fontSize: "2.5rem", fontWeight: 800 }}>{correct}/{questions.length}</div>
+          <div style={{ fontSize: "0.85rem", opacity: 0.8, marginTop: 4 }}>{pct}% 正确率</div>
+          <div style={{ marginTop: 12, height: 6, background: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${pct}%`, height: "100%", background: "white", borderRadius: 3, transition: "width .5s ease" }} />
+          </div>
+          <div style={{ marginTop: 12, fontSize: "0.78rem", opacity: 0.7 }}>
+            {timedMode && `用时 ${fmt(timeLeft > 0 ? timerMinutes * 60 - timeLeft : timerMinutes * 60)}`}
+          </div>
+        </div>
+
+        {/* 操作按钮 */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <button onClick={() => { setShowResults(false); }} style={{ flex: 1, background: "none", border: "1px solid var(--border)", borderRadius: 10, padding: "10px", fontSize: "0.82rem", color: "var(--muted)", cursor: "pointer" }}>查看详情</button>
+          {wrongIndices.length > 0 && (
+            <button onClick={() => { setReviewWrong(true); setShowResults(false); }} style={{ flex: 1, background: "var(--danger-glow)", border: "1px solid var(--danger)", borderRadius: 10, padding: "10px", fontSize: "0.82rem", color: "var(--danger)", cursor: "pointer" }}>复习错题 ({wrongIndices.length})</button>
+          )}
+          <button onClick={() => generate()} style={{ flex: 1, background: "var(--accent)", color: "white", border: "none", borderRadius: 10, padding: "10px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}>再来一套</button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayQuestions = reviewWrong ? questions.filter((_, i) => wrongIndices.includes(i)) : questions;
 
   return (
     <div>
       {/* 控制区 */}
-      <div
-        style={{
-          display: "flex",
-          gap: 14,
-          marginBottom: 24,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <label
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--muted)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          题目数量
-          <select
-            value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
-            style={selectStyle}
-            disabled={loading}
-          >
-            {[3, 5, 8, 10].map((n) => (
-              <option key={n} value={n}>
-                {n} 题
-              </option>
-            ))}
+      <div style={{ display: "flex", gap: 14, marginBottom: 24, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: "0.8rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: 8 }}>
+          题目 <select value={count} onChange={(e) => setCount(Number(e.target.value))} style={selectStyle} disabled={loading}>
+            {[3, 5, 8, 10].map((n) => <option key={n} value={n}>{n} 题</option>)}
           </select>
         </label>
-        <label
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--muted)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          题型
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as QuizType)}
-            style={selectStyle}
-            disabled={loading}
-          >
-            <option value="mixed">混合题型</option>
-            <option value="choice">单选题</option>
-            <option value="judge">判断题</option>
+        <label style={{ fontSize: "0.8rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: 8 }}>
+          题型 <select value={type} onChange={(e) => setType(e.target.value as QuizType)} style={selectStyle} disabled={loading}>
+            <option value="mixed">混合</option><option value="choice">单选</option><option value="judge">判断</option>
           </select>
         </label>
 
-        {questions.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            {/* 进度条 */}
-            <div
-              style={{
-                width: 100,
-                height: 4,
-                background: "var(--border)",
-                borderRadius: 2,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${pct}%`,
-                  height: "100%",
-                  background: allDone ? "var(--success)" : "var(--accent)",
-                  borderRadius: 2,
-                  transition: "width .4s ease, background .3s",
-                }}
-              />
+        {/* 计时模式 toggle */}
+        <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={timedMode} onChange={(e) => setTimedMode(e.target.checked)} disabled={loading} style={{ accentColor: "var(--accent)" }} />
+          限时 {count} 分钟
+        </label>
+
+        {/* 进度 */}
+        {questions.length > 0 && !reviewWrong && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 80, height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: `${(answered / questions.length) * 100}%`, height: "100%", background: allDone ? "var(--success)" : "var(--accent)", borderRadius: 2, transition: "width .4s ease" }} />
             </div>
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: "0.72rem",
-                color: "var(--muted)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {answered}/{questions.length}
-              {allDone && ` · ${correct}/${questions.length} 正确`}
+            <span style={{ fontFamily: "monospace", fontSize: "0.72rem", color: "var(--muted)" }}>
+              {answered}/{questions.length}{allDone && ` · ${correct}正确`}
             </span>
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => void generate()}
-          disabled={loading || !pptContent.trim()}
-          style={{
-            marginLeft: "auto",
-            background: loading ? "var(--muted)" : "var(--accent)",
-            color: "white",
-            border: "none",
-            padding: "10px 24px",
-            borderRadius: 5,
-            cursor: loading ? "not-allowed" : "pointer",
-            fontFamily: "monospace",
-            fontSize: "0.79rem",
-            transition: "background .2s",
-          }}
-        >
-          {loading
-            ? "⏳ 生成中…"
-            : questions.length > 0
-            ? "↻ 重新生成"
-            : "✨ 生成练习题"}
+        {/* 计时器 */}
+        {timedMode && timeLeft > 0 && (
+          <span style={{ fontFamily: "monospace", fontSize: "0.82rem", color: timeLeft <= 30 ? "var(--danger)" : "var(--muted)" }}>
+            ⏱ {fmt(timeLeft)}
+          </span>
+        )}
+
+        <button onClick={() => generate(timedMode ? count : 0)} disabled={loading || !pptContent.trim()}
+          style={{ marginLeft: "auto", background: loading ? "var(--muted)" : "var(--accent)", color: "white", border: "none", padding: "10px 20px", borderRadius: 5, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.79rem", transition: "background .2s" }}>
+          {loading ? "⏳ 生成中…" : questions.length > 0 ? "↻ 重来" : "✨ 出题"}
         </button>
       </div>
 
-      {error && (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 20,
-            padding: "10px 14px",
-            border: "1.5px solid var(--danger)",
-            background: "var(--danger-glow)",
-            color: "var(--danger)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "0.82rem",
-            animation: "fadeUp .25s ease",
-          }}
-        >
-          ⚠️ {error}
+      {reviewWrong && (
+        <div style={{ fontSize: "0.82rem", color: "var(--accent)", marginBottom: 16 }}>
+          🔄 正在复习 {wrongIndices.length} 道错题
+          <button onClick={() => setReviewWrong(false)} style={{ marginLeft: 10, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.78rem", textDecoration: "underline" }}>看全部</button>
         </div>
       )}
 
-      {/* 空状态 */}
+      {error && <div role="alert" style={{ marginBottom: 20, padding: "10px 14px", border: "1.5px solid var(--danger)", background: "var(--danger-glow)", color: "var(--danger)", borderRadius: 8, fontSize: "0.82rem" }}>⚠️ {error}</div>}
+
       {questions.length === 0 && !loading && !error && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "56px 20px",
-            color: "var(--muted)",
-            fontSize: "0.84rem",
-            lineHeight: 1.7,
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "56px 20px", color: "var(--muted)", fontSize: "0.84rem", lineHeight: 1.7 }}>
           <div style={{ fontSize: "2rem", marginBottom: 12 }}>✏️</div>
-          点击「生成练习题」,AI 会根据课件内容出题
+          点击「出题」，AI 会根据课件内容生成练习题
+        </div>
+      )}
+
+      {/* 完成按钮 */}
+      {questions.length > 0 && !allDone && answered > 0 && (
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <button onClick={() => { setShowResults(true); }} style={{ background: "none", border: "1px solid var(--accent)", borderRadius: 10, padding: "8px 20px", fontSize: "0.82rem", color: "var(--accent)", cursor: "pointer" }}>
+            提前交卷 →
+          </button>
+        </div>
+      )}
+      {allDone && !showResults && (
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <button onClick={() => setShowResults(true)} style={{ background: "var(--accent)", color: "white", border: "none", borderRadius: 10, padding: "10px 24px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
+            查看成绩 →
+          </button>
         </div>
       )}
 
       {/* 题目列表 */}
-      {questions.map((q, qi) => (
-        <div
-          key={qi}
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--card-border)",
-            borderRadius: 8,
-            padding: "20px 24px",
-            marginBottom: 16,
-            animation: "fadeUp .3s ease",
-          }}
-        >
-          <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: "0.68rem",
-                background: "color-mix(in srgb, var(--ink) 8%, var(--paper))",
-                color: "var(--muted)",
-                border: "1px solid var(--border)",
-                padding: "2px 8px",
-                borderRadius: 20,
-              }}
-            >
-              {q.type === "choice" ? "单选" : "判断"}
-            </span>
-          </div>
-          <div
-            style={{
-              fontFamily: "'Noto Serif SC', Georgia, serif",
-              fontWeight: 600,
-              fontSize: "0.94rem",
-              marginBottom: 14,
-              lineHeight: 1.55,
-            }}
-          >
-            {qi + 1}. {q.question}
-          </div>
-          {q.options.map((opt, oi) => {
-            const isAnswered = answers[qi] !== undefined;
-            const chosen = answers[qi] === opt;
-            const correctOpt = isCorrect(q, opt);
-            const bg = !isAnswered
-              ? "var(--paper)"
-              : correctOpt
-              ? "color-mix(in srgb, var(--success) 12%, var(--paper))"
-              : chosen
-              ? "var(--danger-glow)"
-              : "var(--paper)";
-            const bc = !isAnswered
-              ? "var(--border)"
-              : correctOpt
-              ? "var(--success)"
-              : chosen
-              ? "var(--danger)"
-              : "var(--border)";
-            const fc = !isAnswered
-              ? "var(--ink)"
-              : correctOpt
-              ? "var(--success)"
-              : chosen
-              ? "var(--danger)"
-              : "var(--ink)";
-            return (
-              <button
-                type="button"
-                key={oi}
-                className={`opt-item${isAnswered ? " answered" : ""}`}
-                onClick={() => select(qi, opt)}
-                disabled={isAnswered}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  font: "inherit",
-                  padding: "10px 14px",
-                  border: `1px solid ${bc}`,
-                  borderRadius: 6,
-                  marginBottom: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  background: bg,
-                  color: fc,
-                  cursor: isAnswered ? "default" : "pointer",
-                  fontSize: "0.84rem",
-                  transition: "all .15s",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: "0.7rem",
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    border: "1px solid currentColor",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  {String.fromCharCode(65 + oi)}
-                </span>
-                <span style={{ flex: 1 }}>{opt}</span>
-                {isAnswered && correctOpt && (
-                  <span style={{ fontSize: "1rem" }}>✓</span>
-                )}
-                {isAnswered && chosen && !correctOpt && (
-                  <span style={{ fontSize: "1rem" }}>✗</span>
-                )}
-              </button>
-            );
-          })}
-          {answers[qi] !== undefined && (
-            <div
-              style={{
-                marginTop: 14,
-                padding: "12px 16px",
-                background: "var(--paper2)",
-                borderRadius: 6,
-                fontSize: "0.81rem",
-                lineHeight: 1.7,
-                color: "var(--muted)",
-                borderLeft: "3px solid var(--border)",
-              }}
-            >
-              💡 解析:{q.explanation}
+      {displayQuestions.map((q, di) => {
+        const qi = reviewWrong ? questions.indexOf(q) : di;
+        const opts = reviewWrong ? shuffle(q.options) : getOptions(qi);
+        return (
+          <div key={qi} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 8, padding: "20px 24px", marginBottom: 16, animation: "fadeUp .25s ease" }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontFamily: "monospace", fontSize: "0.68rem", background: "color-mix(in srgb, var(--ink) 8%, var(--paper))", color: "var(--muted)", border: "1px solid var(--border)", padding: "2px 8px", borderRadius: 20 }}>
+                {q.type === "choice" ? "单选" : "判断"}
+              </span>
             </div>
-          )}
-        </div>
-      ))}
+            <div style={{ fontWeight: 600, fontSize: "0.94rem", marginBottom: 14, lineHeight: 1.55 }}>
+              {qi + 1}. {q.question}
+            </div>
+            {opts.map((opt, oi) => {
+              const isAns = answers[qi] !== undefined;
+              const chosen = answers[qi] === opt;
+              const correctOpt = isCorrect(q, opt);
+              const bg = !isAns ? "var(--paper)" : correctOpt ? "color-mix(in srgb, var(--success) 12%, var(--paper))" : chosen ? "var(--danger-glow)" : "var(--paper)";
+              const bc = !isAns ? "var(--border)" : correctOpt ? "var(--success)" : chosen ? "var(--danger)" : "var(--border)";
+              const fc = !isAns ? "var(--ink)" : correctOpt ? "var(--success)" : chosen ? "var(--danger)" : "var(--ink)";
+              return (
+                <button key={oi} type="button" className={`opt-item${isAns ? " answered" : ""}`} onClick={() => select(qi, opt)} disabled={isAns}
+                  style={{ width: "100%", textAlign: "left", font: "inherit", padding: "10px 14px", border: `1px solid ${bc}`, borderRadius: 6, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, background: bg, color: fc, cursor: isAns ? "default" : "pointer", fontSize: "0.84rem", transition: "all .15s" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: "0.7rem", width: 22, height: 22, borderRadius: "50%", border: "1px solid currentColor", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {String.fromCharCode(65 + oi)}
+                  </span>
+                  <span style={{ flex: 1 }}>{opt}</span>
+                  {isAns && correctOpt && <span style={{ fontSize: "1rem" }}>✓</span>}
+                  {isAns && chosen && !correctOpt && <span style={{ fontSize: "1rem" }}>✗</span>}
+                </button>
+              );
+            })}
+            {answers[qi] !== undefined && (
+              <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--paper2)", borderRadius: 6, fontSize: "0.8rem", lineHeight: 1.7, color: "var(--muted)", borderLeft: "3px solid var(--border)" }}>
+                💡 {q.explanation}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
