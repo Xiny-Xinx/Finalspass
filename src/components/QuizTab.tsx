@@ -28,13 +28,9 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timedMode, setTimedMode] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [reviewWrong, setReviewWrong] = useState(false);
-  const [timerMinutes, setTimerMinutes] = useState(0);
   const [shuffledOptions, setShuffledOptions] = useState<string[][]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restoredRef = useRef(false);
 
   // Restore quiz state
@@ -57,37 +53,22 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
     saveQuizState(fileName, { type, count, questions, answers });
   }, [fileName, type, count, questions, answers]);
 
-  // Timer countdown
-  useEffect(() => {
-    if (!timedMode || timeLeft <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) { clearInterval(timerRef.current!); return 0; }
-        return t - 1;
-      });
-    }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timedMode, timeLeft]);
-
   function getOptions(qi: number): string[] {
     return shuffledOptions[qi] || questions[qi]?.options || [];
   }
 
-  const generate = useCallback(async (mins = 0) => {
+  const generate = useCallback(async () => {
     setLoading(true);
     setQuestions([]);
     setAnswers({});
     setError(null);
     setShowResults(false);
     setReviewWrong(false);
-    setTimerMinutes(mins);
-    setTimeLeft(mins * 60);
     if (fileName) clearQuizState(fileName);
     try {
       const data = await generateQuiz({ content: pptContent, count, type, model });
       setQuestions(data.questions);
       setShuffledOptions(data.questions.map((q) => shuffle(q.options)));
-      if (mins > 0) setTimedMode(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "生成失败");
     } finally {
@@ -115,9 +96,6 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
     fontSize: "0.8rem", background: "var(--card)", color: "var(--ink)", cursor: "pointer",
   };
 
-  // ⏰ 倒计时格式
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
   // ── 结果页面 ──
   if (showResults && questions.length > 0) {
     const pct = Math.round((correct / questions.length) * 100);
@@ -134,9 +112,6 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
           <div style={{ fontSize: "0.85rem", opacity: 0.8, marginTop: 4 }}>{pct}% 正确率</div>
           <div style={{ marginTop: 12, height: 6, background: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" }}>
             <div style={{ width: `${pct}%`, height: "100%", background: "white", borderRadius: 3, transition: "width .5s ease" }} />
-          </div>
-          <div style={{ marginTop: 12, fontSize: "0.78rem", opacity: 0.7 }}>
-            {timedMode && `用时 ${fmt(timeLeft > 0 ? timerMinutes * 60 - timeLeft : timerMinutes * 60)}`}
           </div>
         </div>
 
@@ -169,12 +144,6 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
           </select>
         </label>
 
-        {/* 计时模式 toggle */}
-        <label style={{ fontSize: "0.78rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-          <input type="checkbox" checked={timedMode} onChange={(e) => setTimedMode(e.target.checked)} disabled={loading} style={{ accentColor: "var(--accent)" }} />
-          限时 {count} 分钟
-        </label>
-
         {/* 进度 */}
         {questions.length > 0 && !reviewWrong && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -187,14 +156,7 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
           </div>
         )}
 
-        {/* 计时器 */}
-        {timedMode && timeLeft > 0 && (
-          <span style={{ fontFamily: "monospace", fontSize: "0.82rem", color: timeLeft <= 30 ? "var(--danger)" : "var(--muted)" }}>
-            ⏱ {fmt(timeLeft)}
-          </span>
-        )}
-
-        <button onClick={() => generate(timedMode ? count : 0)} disabled={loading || !pptContent.trim()}
+        <button onClick={() => generate()} disabled={loading || !pptContent.trim()}
           style={{ marginLeft: "auto", background: loading ? "var(--muted)" : "var(--accent)", color: "white", border: "none", padding: "10px 20px", borderRadius: 5, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.79rem", transition: "background .2s" }}>
           {loading ? "⏳ 生成中…" : questions.length > 0 ? "↻ 重来" : "✨ 出题"}
         </button>

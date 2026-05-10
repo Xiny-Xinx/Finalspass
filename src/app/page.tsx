@@ -221,6 +221,7 @@ export default function Page() {
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
+  const [quotaKey, setQuotaKey] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
@@ -290,7 +291,11 @@ export default function Page() {
       .then((r) => r.json())
       .then((data) => { if (data.text) setAnnouncement(data.text); })
       .catch(() => {});
-  }, []);
+    // 实时刷新配额：监听自定义事件
+    const handler = () => setQuotaKey((k) => k + 1);
+    window.addEventListener("quota-refresh", handler);
+    return () => window.removeEventListener("quota-refresh", handler);
+  }, [quotaKey]);
 
   // 页面标题联动: 上传文件后显示文件名
   useEffect(() => {
@@ -371,6 +376,7 @@ export default function Page() {
       setTab("cards");
       setStage("results");
       persist({ fileName: file.name, pptContent: truncated, cards: data.cards });
+      window.dispatchEvent(new CustomEvent("quota-refresh"));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "处理失败";
       setError(message);

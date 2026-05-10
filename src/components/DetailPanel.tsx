@@ -173,6 +173,7 @@ export default function DetailPanel({
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              color: "var(--muted)",
               transition: "all .2s",
             }}
             onMouseEnter={(e) => {
