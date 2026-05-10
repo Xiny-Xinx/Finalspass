@@ -51,7 +51,7 @@ export async function GET(req: Request) {
         isLoggedIn: true,
         used: dailyUsed,
         limit: tierLimit,
-        remaining: Math.max(0, tierLimit - dailyUsed),
+        remaining: Math.max(0, tierLimit - dailyUsed) + extraQuota,
         resetDate: dateKey,
         enabled: true,
         email: user.email,

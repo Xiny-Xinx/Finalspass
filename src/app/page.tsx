@@ -610,7 +610,7 @@ export default function Page() {
                   fill="none"
                   stroke={quota.remaining <= 10 ? "var(--accent)" : "var(--muted)"}
                   strokeWidth="3"
-                  strokeDasharray={`${(quota.used / quota.limit) * 69.12} 69.12`}
+                  strokeDasharray={`${((1 - quota.remaining / Math.max(quota.limit + (quota.extraQuota ?? 0), 1)) * 69.12).toFixed(2)} 69.12`}
                   strokeDashoffset="0"
                   strokeLinecap="round"
                   transform="rotate(-90, 15, 15)"
@@ -1701,8 +1701,8 @@ export default function Page() {
         </div>
       )}
 
-      {/* 客服浮动按钮（仅在不显示窗口时） */}
-      {!supportOpen && (
+      {/* 客服浮动按钮（仅在不显示窗口时） - 未登录不显示 */}
+      {!supportOpen && isLoggedIn && (
         <button
           onClick={() => setSupportOpen(true)}
           aria-label="在线客服"

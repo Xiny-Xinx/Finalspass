@@ -64,7 +64,10 @@ function findAnswer(question: string): string | null {
 export async function POST(req: NextRequest) {
   try {
     const auth = getAuthUser(req);
-    const userId = auth?.userId || "anonymous";
+    if (!auth) {
+      return NextResponse.json({ error: "请先登录后使用客服" }, { status: 401 });
+    }
+    const userId = auth.userId;
 
     const body = await req.json();
     const { question } = schema.parse(body);
