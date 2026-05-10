@@ -222,6 +222,8 @@ export default function Page() {
   const [sessionList, setSessionList] = useState<SessionMeta[]>([]);
   const [scrollY, setScrollY] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportMsg, setSupportMsg] = useState("");
   const [supportChat, setSupportChat] = useState<{role:"user"|"assistant"; content:string}[]>([]);
@@ -283,6 +285,10 @@ export default function Page() {
     fetch("/api/user/support/admin/check")
       .then((r) => r.json())
       .then((data) => setIsAdmin(data.admin === true))
+      .catch(() => {});
+    fetch("/api/announcement")
+      .then((r) => r.json())
+      .then((data) => { if (data.text) setAnnouncement(data.text); })
       .catch(() => {});
   }, []);
 
@@ -592,6 +598,22 @@ export default function Page() {
           )}
         </div>
       </header>
+
+      {/* ── 公告栏 ── */}
+      {announcement && !announcementDismissed && (
+        <div style={{
+          background: "linear-gradient(90deg, var(--accent), #6366f1)", color: "white",
+          padding: "10px 20px", textAlign: "center", fontSize: "0.82rem",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        }}>
+          <span>📢</span>
+          <span style={{ flex: 1 }}>{announcement}</span>
+          <button onClick={() => setAnnouncementDismissed(true)}
+            style={{ background: "none", border: "none", color: "white", cursor: "pointer", opacity: 0.8, fontSize: "0.9rem", padding: 2 }}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── 主体 ── */}
       <main
@@ -1478,6 +1500,7 @@ export default function Page() {
                 F
               </div>
               <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>在线客服</span>
+              <span style={{ fontSize: "0.6rem", color: "var(--muted)", background: "var(--accent-glow)", padding: "1px 6px", borderRadius: 6 }}>仅支持咨询</span>
             </div>
             <button
               onClick={() => { setSupportOpen(false); setSupportChat([]); }}
@@ -1523,7 +1546,7 @@ export default function Page() {
               >
                 <div style={{ fontSize: "1.5rem", marginBottom: 8 }}>💬</div>
                 您好！我是 FinalsPass 客服助手<br />
-                有什么可以帮您的？
+                可咨询：软件使用、套餐订阅、充值退款等问题
               </div>
             )}
             {supportChat.map((m, i) => (
@@ -1578,7 +1601,7 @@ export default function Page() {
             <input
               value={supportMsg}
               onChange={(e) => setSupportMsg(e.target.value)}
-              placeholder="输入您的问题…"
+              placeholder="咨询使用、套餐、退款等问题…"
               disabled={supportLoading}
               style={{
                 flex: 1,

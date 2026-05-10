@@ -25,6 +25,30 @@ export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const [announceText, setAnnounceText] = useState("");
+  const [announceMsg, setAnnounceMsg] = useState("");
+
+  useEffect(() => {
+    fetch("/api/announcement").then((r) => r.json()).then((d) => { if (d.text) setAnnounceText(d.text); }).catch(() => {});
+  }, []);
+
+  async function saveAnnouncement() {
+    if (!announceText.trim()) return;
+    try {
+      const res = await fetch("/api/announcement", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: announceText.trim() }),
+      });
+      setAnnounceMsg(res.ok ? "✅ 公告已发布" : "❌ 发布失败");
+    } catch { setAnnounceMsg("❌ 网络错误"); }
+    setTimeout(() => setAnnounceMsg(""), 3000);
+  }
+
+  async function clearAnnouncement() {
+    try { await fetch("/api/announcement", { method: "DELETE" }); setAnnounceText(""); setAnnounceMsg("✅ 公告已关闭"); }
+    catch {}
+    setTimeout(() => setAnnounceMsg(""), 3000);
+  }
 
   useEffect(() => {
     fetch("/api/user/support/admin")
@@ -74,6 +98,16 @@ export default function AdminMessagesPage() {
       <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
         <a href="/" style={{ color: "var(--muted)", textDecoration: "none", fontSize: "0.8rem" }}>← 首页</a>
         <h1 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>客服消息</h1>
+      </div>
+
+      {/* ── 公告管理 ── */}
+      <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "var(--accent-subtle)" }}>
+        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap" }}>📢 公告</span>
+        <input value={announceText} onChange={(e) => setAnnounceText(e.target.value)} placeholder="输入公告内容…"
+          style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+        <button onClick={saveAnnouncement} style={{ background: "var(--accent)", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: "pointer", fontWeight: 500 }}>发布</button>
+        <button onClick={clearAnnouncement} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer" }}>关闭</button>
+        {announceMsg && <span style={{ fontSize: "0.72rem", color: "var(--success)" }}>{announceMsg}</span>}
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

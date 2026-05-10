@@ -7,21 +7,59 @@ const schema = z.object({
   question: z.string().min(1, "问题不能为空"),
 });
 
-const SYSTEM = `你是 FinalsPass 的在线客服助手，请用中文友好地回答用户的问题。
+/** FAQ 关键词匹配规则 */
+const FAQ: { keywords: string[]; answer: string }[] = [
+  {
+    keywords: ["使用", "怎么用", "如何", "上传", "课件", "开始"],
+    answer: "上传您的课件文件（PPT/PDF/DOCX），AI 会自动提炼核心知识点并生成知识卡片。之后您可以使用 AI 问答、练习测验、记忆闪卡等功能进行学习。",
+  },
+  {
+    keywords: ["套餐", "价格", "订阅", "pro", "premium", "免费", "多少钱", "费用", "付费"],
+    answer: "FinalsPass 提供三档套餐：免费版（30次/天）、Pro（A$8.99/月，150次/天）、Premium（A$18.49/月，500次/天）。Pro 和 Premium 可使用全部功能，免费版可用知识卡片和问答。",
+  },
+  {
+    keywords: ["取消", "退订", "停止", "取消订阅"],
+    answer: "在账户中心点击「取消订阅」即可停止自动续费，当前套餐权益可继续使用至到期日。取消后不会立即降级。",
+  },
+  {
+    keywords: ["充值", "额外", "配额", "不够", "用完", "额度"],
+    answer: "每日额度用完后，可在账户中心购买额外配额（50次/A$1.99、150次/A$4.99、500次/A$12.99），不限时间，永不过期。",
+  },
+  {
+    keywords: ["退款", "退钱", "refund"],
+    answer: "如需退款，请联系管理员邮箱 support@finalspass.top，我们会尽快处理。",
+  },
+  {
+    keywords: ["密码", "忘记密码", "重置", "登录不了"],
+    answer: "在登录页点击「忘记密码」，输入注册邮箱获取验证码后即可重置密码。",
+  },
+  {
+    keywords: ["联系", "客服", "人工", "转人工", "管理员"],
+    answer: "已为您转接人工客服，请稍候。您的问题已提交，管理员会尽快回复。",
+  },
+  {
+    keywords: ["模型", "模型选择", "v4", "flash", "deepseek", "claude"],
+    answer: "FinalsPass 支持 DeepSeek V4 Flash、V4 Pro 和 Claude Sonnet 4 等多种模型。Pro 及以上套餐可在页面右上角切换模型，不同模型消耗不同配额。",
+  },
+  {
+    keywords: ["错误", "报错", "bug", "崩溃", "异常", "失败"],
+    answer: "遇到技术问题请先刷新页面重试。如果问题持续，请联系管理员邮箱 support@finalspass.top，并附上报错截图。",
+  },
+  {
+    keywords: ["次数", "限额", "上限", "每天", "每日", "限制"],
+    answer: "每日配额根据套餐不同：免费版30次、Pro 150次、Premium 500次。用量用完可购买额外配额，或等次日重置。",
+  },
+];
 
-关于 FinalsPass 的常见信息：
-- FinalsPass 是一个 AI 学习工具，上传 PPT/PDF/DOCX 后可自动提取知识点
-- 支持知识卡片、AI 问答、练习测验三种学习模式
-- 有免费版、Pro (A$8.99/月)、Premium (A$18.49/月) 三档套餐
-- Pro 支持 300K tokens/天，Premium 支持 1M tokens/天
-- 取消订阅后当前周期内仍可使用，到期自动转为免费版
-- 技术或支付问题请联系管理员邮箱 support@finalspass.top
-
-回答要求：
-- 简洁友好，100-200 字
-- 涉及具体账户问题时，引导用户前往「账户中心」查看或联系管理员
-- 不知道答案时，如实告知并建议联系 support@finalspass.top
-- 如果用户明确要求转人工，请回复 "转人工" 三个字`;
+function findAnswer(question: string): string | null {
+  const q = question.toLowerCase();
+  for (const faq of FAQ) {
+    if (faq.keywords.some((kw) => q.includes(kw))) return faq.answer;
+  }
+  // 检查是否要求转人工
+  if (/人工|客服|admin|真人|帮忙/.test(q)) return null;
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,44 +79,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ reply: null, unread: true });
     }
 
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "客服系统暂不可用" }, { status: 500 });
+    // FAQ 自动匹配
+    const answer = findAnswer(question);
+
+    if (answer) {
+      // 有匹配的 FAQ 答案
+      await addMessage(userId, { role: "assistant", content: answer });
+      return NextResponse.json({ reply: answer });
     }
 
-    const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: question },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-        stream: false,
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("[support] DeepSeek 调用失败:", res.status, errText);
-      return NextResponse.json({ error: "客服系统暂不可用" }, { status: 500 });
-    }
-
-    const json = await res.json();
-    const reply = json.choices?.[0]?.message?.content || "抱歉，我暂时无法回答这个问题。";
-
-    // 保存 AI 回复
-    if (reply !== "转人工") {
-      await addMessage(userId, { role: "assistant", content: reply });
-    }
-
-    return NextResponse.json({ reply: reply === "转人工" ? null : reply, transfer: reply === "转人工" });
+    // 没有匹配 → 转人工
+    const transferMsg = "暂未找到匹配的答案，已为您转接人工客服。您的问题已提交，管理员会尽快回复。";
+    await addMessage(userId, { role: "assistant", content: transferMsg });
+    return NextResponse.json({ reply: null, transfer: true });
   } catch (err) {
     console.error("[support] 处理失败:", err);
     return NextResponse.json({ error: "客服系统暂不可用" }, { status: 500 });

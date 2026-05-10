@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/quota-guard";
+import { getUserInfo } from "@/lib/support-store";
+
+export const dynamic = "force-dynamic";
+
+let redisClient: import("@upstash/redis").Redis | null = null;
+async function getRedis() {
+  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    const { Redis } = await import("@upstash/redis");
+    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  }
+  return redisClient;
+}
+
+async function isAdmin(userId: string): Promise<boolean> {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return false;
+  const info = await getUserInfo(userId);
+  return info?.email === adminEmail;
+}
+
+/** GET: 获取当前公告（公开） */
+export async function GET() {
+  const redis = await getRedis();
+  if (!redis) return NextResponse.json({ text: "" });
+
+  const raw = await redis.get<any>("announcement");
+  const data = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : null;
+  return NextResponse.json({ text: data?.text || "", active: data?.active || false });
+}
+
+/** POST: 管理员发布/更新公告 */
+export async function POST(req: NextRequest) {
+  const auth = getAuthUser(req);
+  if (!auth || !(await isAdmin(auth.userId))) {
+    return NextResponse.json({ error: "无权限" }, { status: 403 });
+  }
+
+  const body = await req.json();
+  const { text } = body;
+  if (!text?.trim()) return NextResponse.json({ error: "内容不能为空" }, { status: 400 });
+
+  const redis = await getRedis();
+  if (!redis) return NextResponse.json({ error: "系统错误" }, { status: 500 });
+
+  await redis.set("announcement", JSON.stringify({ text: text.trim(), active: true, updatedAt: Date.now() }));
+  return NextResponse.json({ success: true });
+}
+
+/** DELETE: 管理员关闭公告 */
+export async function DELETE(req: NextRequest) {
+  const auth = getAuthUser(req);
+  if (!auth || !(await isAdmin(auth.userId))) {
+    return NextResponse.json({ error: "无权限" }, { status: 403 });
+  }
+
+  const redis = await getRedis();
+  if (!redis) return NextResponse.json({ error: "系统错误" }, { status: 500 });
+
+  await redis.del("announcement");
+  return NextResponse.json({ success: true });
+}
