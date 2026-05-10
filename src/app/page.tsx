@@ -7,6 +7,8 @@ import KnowledgeCards from "@/components/KnowledgeCards";
 import DetailPanel from "@/components/DetailPanel";
 import QATab from "@/components/QATab";
 import QuizTab from "@/components/QuizTab";
+import FlashcardTab from "@/components/FlashcardTab";
+import StudyPlanTab from "@/components/StudyPlanTab";
 import { extractFile } from "@/lib/parser";
 import { extractCards, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY, MODEL_QUOTA_COST } from "@/lib/constants";
@@ -15,7 +17,7 @@ import type { SessionMeta } from "@/lib/store";
 import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, TIER_MODELS, type ModelId } from "@/lib/claude";
 
 type Stage = "upload" | "processing" | "results";
-type Tab = "cards" | "qa" | "quiz";
+type Tab = "cards" | "qa" | "quiz" | "flashcard" | "studyplan";
 
 interface PersistedState {
   fileName: string;
@@ -37,6 +39,8 @@ const TABS: ReadonlyArray<readonly [Tab, string]> = [
   ["cards", "📋 知识卡片"],
   ["qa", "💬 AI 问答"],
   ["quiz", "✏️ 练习测验"],
+  ["flashcard", "🃏 闪卡"],
+  ["studyplan", "📋 考前速成"],
 ];
 
 function loadPersisted(): PersistedState | null {
@@ -962,6 +966,8 @@ export default function Page() {
             )}
             {tab === "qa" && <QATab ref={qaRef} pptContent={pptContent} cards={cards} model={model} />}
             {tab === "quiz" && <QuizTab pptContent={pptContent} fileName={fileName} model={model} />}
+            {tab === "flashcard" && <FlashcardTab cards={cards} disabled={cards.length === 0} />}
+            {tab === "studyplan" && <StudyPlanTab />}
           </>
         )}
       </main>
