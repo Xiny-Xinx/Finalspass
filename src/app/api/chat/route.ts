@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
 
     const quotaCost = getQuotaCost(model);
 
+    // 检查该模型的每日调用上限
+    await guard.checkModelCap(model);
+
     // 流式模式
     if (stream) {
       const readable = await chatStream(question, {
@@ -75,8 +78,8 @@ export async function POST(req: NextRequest) {
         history: trimmedHistory,
         model: model as ModelId,
         onUsage() {
-          // 流结束后自动扣除配额（按模型固定成本）
-          guard.deduct(quotaCost);
+          // 流结束后自动扣除配额
+          guard.deduct(quotaCost, model);
         },
       });
 
@@ -96,8 +99,8 @@ export async function POST(req: NextRequest) {
       model: model as ModelId,
     });
 
-    // 自动扣除配额（按模型固定成本，不计实际 token 消耗）
-    await guard.deduct(quotaCost);
+    // 自动扣除配额
+    await guard.deduct(quotaCost, model);
 
     return NextResponse.json({ answer });
   } catch (error: unknown) {

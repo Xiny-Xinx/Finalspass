@@ -31,6 +31,13 @@ export const QUIZ_QUOTA_COST = 3;
 /** 未登录游客每日免费配额（单位：次） */
 export const DAILY_TOKEN_LIMIT = 30;
 
+/** 各套餐下各模型的每日调用次数上限（附加限制，在单位配额之上） */
+export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
+  free: {},
+  pro: { "deepseek-v4-pro": 25 },
+  premium: { "deepseek-v4-pro": 80 },
+};
+
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
   free: 30,

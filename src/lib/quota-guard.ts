@@ -26,6 +26,7 @@ import {
   GUEST_RPM_LIMIT,
   USER_RPM_LIMIT,
   TIER_LIMITS,
+  TIER_MODEL_CAPS,
   EXTRACT_QUOTA_COST,
   QUIZ_QUOTA_COST,
 } from "./constants";
@@ -108,10 +109,34 @@ function dateKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * 检查指定模型是否超出每日调用次数上限
+ */
+async function checkModelCap(userId: string, tier: string, modelId: string): Promise<void> {
+  const cap = TIER_MODEL_CAPS[tier]?.[modelId];
+  if (!cap) return; // 无上限
+
+  const redis = await getRedis();
+  if (!redis) return;
+
+  const key = `user:daily:model:${userId}:${dateKey()}:${modelId}`;
+  try {
+    const used = (await redis.get<number>(key)) ?? 0;
+    if (used >= cap) {
+      throw Object.assign(
+        new Error(`今日 ${modelId} 模型调用已达上限（${cap} 次），请明日再试`),
+        { statusCode: 429 }
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && (err as any).statusCode === 429) throw err;
+  }
+}
+
 /** 根据模型 ID 获取单次请求的配额成本 */
 export function getQuotaCost(model?: string): number {
   if (model && MODEL_QUOTA_COST[model]) return MODEL_QUOTA_COST[model];
-  return 1; // 默认 1 单位
+  return 1;
 }
 
 /**
@@ -132,7 +157,8 @@ export async function withQuota(req: Request) {
       throw Object.assign(new Error("用户不存在"), { statusCode: 401 });
     }
 
-    const hasPaidTier = user.tier === "pro" || user.tier === "premium";
+    const tier = user.tier;
+    const hasPaidTier = tier === "pro" || tier === "premium";
 
     if (hasPaidTier) {
       await checkUserDailyCap(auth.userId);
@@ -147,9 +173,11 @@ export async function withQuota(req: Request) {
       userId: auth.userId,
       ip,
       isLoggedIn: true as const,
-      tier: user.tier,
-      /** AI 调用后，扣除实际消耗的配额（单位：次） */
-      deduct: async (units: number) => {
+      tier,
+      /** 调用 AI 前检查该模型今日是否已达上限 */
+      checkModelCap: async (modelId: string) => checkModelCap(auth.userId, tier, modelId),
+      /** AI 调用后，扣除实际消耗的配额 */
+      deduct: async (units: number, modelId?: string) => {
         if (units > 0) {
           if (hasPaidTier) {
             await recordUserDailyUsage(auth.userId, units);
@@ -159,6 +187,18 @@ export async function withQuota(req: Request) {
               console.error(`[quota] 扣减失败 userId=${auth.userId} units=${units}: ${result.error}`);
             }
             await recordUserDailyUsage(auth.userId, units);
+          }
+          // 如有模型 ID，自增该模型的单独计数器
+          if (modelId) {
+            const mk = `user:daily:model:${auth.userId}:${dateKey()}:${modelId}`;
+            const redis = await getRedis();
+            if (redis) {
+              try {
+                const ttl = await redis.ttl(mk);
+                if (ttl === -2) await redis.set(mk, 1, { ex: 86400 });
+                else await redis.incrby(mk, 1);
+              } catch {}
+            }
           }
         }
       },
@@ -177,6 +217,7 @@ export async function withQuota(req: Request) {
     userId: null,
     ip,
     isLoggedIn: false as const,
+    checkModelCap: async () => {},
     deduct: async (units: number) => {
       if (units > 0) {
         await recordTokens(ip, units * 1000);
