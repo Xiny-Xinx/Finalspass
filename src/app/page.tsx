@@ -380,8 +380,13 @@ export default function Page() {
 
         for (let k = 0; k < chunks.length; k++) {
           setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length}) 第${k + 1}/${chunks.length}部分...`);
-          const data = await extractCards(chunks[k], { model });
-          allCards = [...allCards, ...data.cards];
+          try {
+            const data = await extractCards(chunks[k], { model });
+            allCards = [...allCards, ...(data.cards ?? [])];
+          } catch (chunkErr) {
+            console.warn(`[chunk ${k}] 跳过:`, chunkErr);
+            // 单个分块失败不影响整体
+          }
         }
       }
 

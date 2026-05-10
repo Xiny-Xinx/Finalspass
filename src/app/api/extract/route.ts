@@ -12,14 +12,12 @@ const requestSchema = z.object({
 });
 
 const responseSchema = z.object({
-  cards: z
-    .array(
-      z.object({
-        title: z.string(),
-        summary: z.string(),
-      })
-    )
-    .min(1, "AI 未生成任何知识点"),
+  cards: z.array(
+    z.object({
+      title: z.string(),
+      summary: z.string(),
+    })
+  ),
 });
 
 /** 检测内容主体语言 */
@@ -58,16 +56,20 @@ ${content.slice(0, MAX_EXTRACT_CHARS)}`;
     const parsed = parseJsonFromLLM(raw);
     const data = responseSchema.parse(parsed);
 
-    // 自动扣除 tokens（登录用户扣余额，游客扣每日限额）
-    await guard.deduct(EXTRACT_QUOTA_COST);
+    // AI 调用成功后扣除配额（超时/失败不扣费）
+    await guard.deduct(EXTRACT_QUOTA_COST, model);
 
     return NextResponse.json({ cards: data.cards });
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
+      console.error("[extract] Zod 校验失败:", error.issues);
       return NextResponse.json(
         { error: error.issues.map((i) => i.message).join("; ") },
         { status: 400 }
       );
+    }
+    if (error instanceof Error) {
+      console.error("[extract]", error.message.slice(0, 300));
     }
     return errorResponse(error);
   }
