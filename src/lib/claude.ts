@@ -431,19 +431,26 @@ export function parseJsonFromLLM<T = unknown>(raw: string): T {
     return JSON.parse(s) as T;
   } catch (err) {
     console.error("[parseJsonFromLLM] 解析失败，原始内容:", s.slice(0, 500));
-    // 尝试 JSON5 风格修复：去掉注释、去掉多余逗号
-    try {
-      // 更激进的修复：去掉属性名外的多余引号、单引号转双引号
-      s = s.replace(/'/g, '"')
-           .replace(/,\s*}/g, "}")
-           .replace(/,\s*]/g, "]");
-      return JSON.parse(s) as T;
-    } catch {
-      throw new Error(
-        `AI 返回的内容不是有效 JSON: ${
-          err instanceof Error ? err.message : "解析失败"
-        }`
-      );
+    // 尝试多层修复
+    const fixes = [
+      () => s,                                                              // 原样重试
+      () => s.replace(/'/g, '"'),                                           // 单引号→双引号
+      () => s.replace(/'/g, '"').replace(/,\s*}/g, "}").replace(/,\s*]/g, "]"), // + 尾逗号
+      () => s.replace(/[ -]/g, ""),                              // 去掉控制字符
+      () => s.replace(/[ --]/g, ""),                 // 更多控制字符
+    ];
+    for (const fix of fixes) {
+      try { return JSON.parse(fix()) as T; } catch {}
     }
+    // 最后尝试：保留字母数字和基本标点
+    try {
+      const stripped = s.replace(/[^\x20-\xFF一-鿿"]/g, "");
+      return JSON.parse(stripped) as T;
+    } catch {}
+    throw new Error(
+      `AI 返回的内容不是有效 JSON: ${
+        err instanceof Error ? err.message : "解析失败"
+      }`
+    );
   }
 }
