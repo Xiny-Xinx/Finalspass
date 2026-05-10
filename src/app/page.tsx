@@ -227,6 +227,7 @@ export default function Page() {
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportMsg, setSupportMsg] = useState("");
+  const [detailCache, setDetailCache] = useState<Record<string, string>>({});
   const [supportChat, setSupportChat] = useState<{role:"user"|"assistant"; content:string}[]>([]);
   const [supportLoading, setSupportLoading] = useState(false);
   const [model, setModel] = useState<ModelId>(() => {
@@ -457,6 +458,7 @@ export default function Page() {
     setFileName("");
     setError(null);
     persist(null);
+    setDetailCache({});
   };
 
   const loadHistorySession = useCallback(async (id: string) => {
@@ -1092,6 +1094,8 @@ export default function Page() {
           pptContent={pptContent}
           onClose={() => setDetailCard(null)}
           model={model}
+          cachedText={detailCache[detailCard.title + "||" + detailCard.summary]}
+          onCache={(text) => setDetailCache((prev) => ({ ...prev, [detailCard!.title + "||" + detailCard!.summary]: text }))}
         />
       )}
 

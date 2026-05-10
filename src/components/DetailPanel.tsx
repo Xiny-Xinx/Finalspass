@@ -11,6 +11,8 @@ interface DetailPanelProps {
   pptContent: string;
   onClose: () => void;
   model?: ModelId;
+  cachedText?: string;
+  onCache?: (text: string) => void;
 }
 
 export default function DetailPanel({
@@ -18,9 +20,11 @@ export default function DetailPanel({
   pptContent,
   onClose,
   model,
+  cachedText,
+  onCache,
 }: DetailPanelProps) {
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState(cachedText ?? "");
+  const [loading, setLoading] = useState(!cachedText);
   const [errored, setErrored] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -78,6 +82,7 @@ export default function DetailPanel({
         .then((data) => {
           setText(data.answer);
           setLoading(false);
+          onCache?.(data.answer);
         })
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === "AbortError") return;
@@ -92,6 +97,7 @@ export default function DetailPanel({
   );
 
   useEffect(() => {
+    if (cachedText) return; // 有缓存时跳过 API 调用
     const ctrl = new AbortController();
     fetchDetail(ctrl.signal);
 
@@ -104,7 +110,7 @@ export default function DetailPanel({
       ctrl.abort();
       window.removeEventListener("keydown", onKey);
     };
-  }, [fetchDetail, onClose]);
+  }, [fetchDetail, onClose, cachedText]);
 
   return (
     <div
