@@ -360,6 +360,7 @@ export default function Page() {
 
     let allText = "";
     let allCards: Card[] = [];
+    const CHUNK_SIZE = 4000; // 每段最多 4000 字，避免超时
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -371,9 +372,17 @@ export default function Page() {
         );
         allText += `\n\n===== ${file.name} =====\n\n${text}`;
 
-        setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length})...`);
-        const data = await extractCards(text, { model });
-        allCards = [...allCards, ...data.cards];
+        // 大文件自动分块处理，避免 Vercel 超时
+        const chunks: string[] = [];
+        for (let j = 0; j < text.length; j += CHUNK_SIZE) {
+          chunks.push(text.slice(j, j + CHUNK_SIZE));
+        }
+
+        for (let k = 0; k < chunks.length; k++) {
+          setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length}) 第${k + 1}/${chunks.length}部分...`);
+          const data = await extractCards(chunks[k], { model });
+          allCards = [...allCards, ...data.cards];
+        }
       }
 
       const truncated = allText.slice(0, MAX_EXTRACT_CHARS * 2);
