@@ -44,10 +44,6 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState<string | null>(null);
-  const [pwOld, setPwOld] = useState("");
-  const [pwNew, setPwNew] = useState("");
-  const [pwConfirm, setPwConfirm] = useState("");
-  const [pwChanging, setPwChanging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -124,36 +120,6 @@ export default function AccountPage() {
       setMessage("网络错误");
     } finally {
       setCancelling(false);
-    }
-  }
-
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (pwNew !== pwConfirm) {
-      setMessage("两次输入的新密码不一致");
-      return;
-    }
-    setPwChanging(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldPassword: pwOld, newPassword: pwNew }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage("密码修改成功");
-        setPwOld("");
-        setPwNew("");
-        setPwConfirm("");
-      } else {
-        setMessage(`失败：${data.error}`);
-      }
-    } catch {
-      setMessage("网络错误");
-    } finally {
-      setPwChanging(false);
     }
   }
 
@@ -458,87 +424,6 @@ export default function AccountPage() {
         />
       </div>
 
-      {/* ── 修改密码 ── */}
-      <h2 style={{ fontSize: "1.05rem", margin: "0 0 16px", fontWeight: 600 }}>修改密码</h2>
-      <form
-        onSubmit={handleChangePassword}
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--card-border)",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input
-            type="password"
-            placeholder="旧密码"
-            value={pwOld}
-            onChange={(e) => setPwOld(e.target.value)}
-            required
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--paper2)",
-              color: "var(--text)",
-              fontSize: "0.9rem",
-              outline: "none",
-            }}
-          />
-          <input
-            type="password"
-            placeholder="新密码（至少 6 位）"
-            value={pwNew}
-            onChange={(e) => setPwNew(e.target.value)}
-            required
-            minLength={6}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--paper2)",
-              color: "var(--text)",
-              fontSize: "0.9rem",
-              outline: "none",
-            }}
-          />
-          <input
-            type="password"
-            placeholder="确认新密码"
-            value={pwConfirm}
-            onChange={(e) => setPwConfirm(e.target.value)}
-            required
-            minLength={6}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--paper2)",
-              color: "var(--text)",
-              fontSize: "0.9rem",
-              outline: "none",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={pwChanging}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: pwChanging ? "var(--border)" : "var(--accent)",
-              color: "white",
-              fontWeight: 600,
-              fontSize: "0.85rem",
-              cursor: pwChanging ? "not-allowed" : "pointer",
-            }}
-          >
-            {pwChanging ? "修改中…" : "修改密码"}
-          </button>
-        </div>
-      </form>
 
       {/* ── 取消订阅二次确认弹窗 ── */}
       {showCancelConfirm && (
