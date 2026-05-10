@@ -32,6 +32,10 @@ export default function AdminMessagesPage() {
   const [grantTier, setGrantTier] = useState<"pro" | "premium">("pro");
   const [granting, setGranting] = useState(false);
   const [grantMsg, setGrantMsg] = useState("");
+  const [extraEmail, setExtraEmail] = useState("");
+  const [extraUnits, setExtraUnits] = useState(50);
+  const [extraGranting, setExtraGranting] = useState(false);
+  const [extraMsg, setExtraMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/announcement").then((r) => r.json()).then((d) => { if (d.text) setAnnounceText(d.text); }).catch(() => {});
@@ -68,6 +72,21 @@ export default function AdminMessagesPage() {
     } catch { setGrantMsg("❌ 网络错误"); }
     setGranting(false);
     setTimeout(() => setGrantMsg(""), 4000);
+  }
+
+  async function grantExtra() {
+    if (!extraEmail.trim()) return;
+    setExtraGranting(true); setExtraMsg("");
+    try {
+      const res = await fetch("/api/admin/grant-extra", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: extraEmail.trim(), units: extraUnits }),
+      });
+      const data = await res.json();
+      setExtraMsg(res.ok ? `✅ 已为 ${data.email} 添加 ${extraUnits} 次（共 ${data.total} 次）` : `❌ ${data.error}`);
+    } catch { setExtraMsg("❌ 网络错误"); }
+    setExtraGranting(false);
+    setTimeout(() => setExtraMsg(""), 4000);
   }
 
   useEffect(() => {
@@ -129,7 +148,7 @@ export default function AdminMessagesPage() {
         <button onClick={clearAnnouncement} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer" }}>关闭</button>
         {announceMsg && <span style={{ fontSize: "0.72rem", color: "var(--success)" }}>{announceMsg}</span>}
       </div>
-      {/* ── 赠送 Pro ── */}
+      {/* ── 赠送 Pro/额外配额 ── */}
       <div style={{ padding: "8px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "rgba(52,211,153,0.04)", flexWrap: "wrap" }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap" }}>🎁 赠送</span>
         <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="用户邮箱…"
@@ -144,6 +163,15 @@ export default function AdminMessagesPage() {
         <button onClick={grantPro} disabled={granting}
           style={{ background: granting ? "var(--border)" : "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: granting ? "not-allowed" : "pointer", fontWeight: 500, opacity: granting ? 0.6 : 1 }}>{granting ? "赠送中…" : "赠送"}</button>
         {grantMsg && <span style={{ fontSize: "0.72rem", color: grantMsg.startsWith("✅") ? "var(--success)" : "var(--danger)" }}>{grantMsg}</span>}
+        <span style={{ fontSize: "0.65rem", color: "var(--border)", margin: "0 4px" }}>│</span>
+        <input value={extraEmail} onChange={(e) => setExtraEmail(e.target.value)} placeholder="赠送额度邮箱…"
+          style={{ width: 160, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+        <input type="number" value={extraUnits} onChange={(e) => setExtraUnits(Number(e.target.value))} min={1} max={10000}
+          style={{ width: 55, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none", textAlign: "center" }} />
+        <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>次</span>
+        <button onClick={grantExtra} disabled={extraGranting}
+          style={{ background: extraGranting ? "var(--border)" : "#2563eb", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: extraGranting ? "not-allowed" : "pointer", fontWeight: 500, opacity: extraGranting ? 0.6 : 1 }}>{extraGranting ? "添加中…" : "添加"}</button>
+        {extraMsg && <span style={{ fontSize: "0.72rem", color: extraMsg.startsWith("✅") ? "var(--success)" : "var(--danger)" }}>{extraMsg}</span>}
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

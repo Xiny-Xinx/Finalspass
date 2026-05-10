@@ -1,35 +1,25 @@
 /**
- * 套餐订阅 API（Lemon Squeezy）
+ * 套餐订阅 API（支付宝收款码）
  *
  * 流程：
- *   1. 创建订单记录 → 标记 pending
- *   2. 调用 LS Checkout API 创建结账会话
- *   3. 返回 redirectUrl，前端跳转到 LS 支付页
- *
- * 用户完成支付后，LS 异步通知 /api/lemonsqueezy/webhook 完成升级。
+ *   1. 返回支付宝收款码信息 + 金额
+ *   2. 用户扫码付款后，联系客服告知已付款
+ *   3. 管理员在后台手动激活套餐
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUser } from "@/lib/quota-guard";
-import { createCheckout, isLsConfigured } from "@/lib/lemonsqueezy";
-import { createOrder } from "@/lib/order-store";
 import { TIER_PRICES } from "@/lib/constants";
+
+const schema = z.object({
+  tier: z.enum(["pro", "premium"]),
+});
 
 const TIER_LABEL: Record<string, string> = {
   pro: "Pro",
   premium: "Premium",
 };
-
-/** 各套餐对应的 LS Variant ID（在 LS 后台 Product Variants 获取） */
-const TIER_VARIANT: Record<string, string> = {
-  pro: process.env.LS_VARIANT_PRO || "",
-  premium: process.env.LS_VARIANT_PREMIUM || "",
-};
-
-const schema = z.object({
-  tier: z.enum(["pro", "premium"]),
-});
 
 export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
@@ -37,9 +27,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "请先登录" }, { status: 401 });
   }
 
-  if (!isLsConfigured()) {
+  const qrUrl = process.env.NEXT_PUBLIC_ALIPAY_QR_URL || "";
+  if (!qrUrl) {
     return NextResponse.json(
-      { error: "支付系统尚未配置" },
+      { error: "收款码尚未配置" },
       { status: 500 }
     );
   }
@@ -53,48 +44,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "无效套餐" }, { status: 400 });
     }
 
-    // 创建订单
-    const order = await createOrder({
-      userId: auth.userId,
-      type: "subscription",
-      amount,
-      tier,
-    });
-
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const redirectUrl = `${baseUrl}/payment/result?out_trade_no=${order.outTradeNo}`;
-
-    // 检查对应套餐的 Variant ID 是否配置
-    const variantId = TIER_VARIANT[tier];
-    if (!variantId) {
-      return NextResponse.json({ error: "套餐支付配置未完成" }, { status: 500 });
-    }
-
-    // 创建 LS Checkout（使用套餐各自的固定价格 Variant，不传 custom_price）
-    const checkout = await createCheckout(
-      undefined, // 使用 variant 固定价格
-      `${TIER_LABEL[tier]} 套餐 · 月付`,
-      `${TIER_LABEL[tier]} 套餐，30 天有效期`,
-      {
-        user_id: auth.userId,
-        type: "subscription",
-        tier,
-        out_trade_no: order.outTradeNo,
-      },
-      redirectUrl,
-      variantId
-    );
-
-    if ("error" in checkout) {
-      return NextResponse.json({ error: checkout.error }, { status: 500 });
-    }
-
     return NextResponse.json({
       success: true,
-      redirectUrl: checkout.url,
-      outTradeNo: order.outTradeNo,
+      qrPayment: true,
       tier,
       amount,
+      label: `${TIER_LABEL[tier]} · ¥${amount.toFixed(2)}`,
+      qrUrl,
+      message: `请使用支付宝扫描下方二维码支付 ¥${amount.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您激活 ${TIER_LABEL[tier]} 套餐。`,
     });
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
@@ -103,7 +60,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("[subscription] 创建订单失败:", error);
-    return NextResponse.json({ error: "创建订单失败" }, { status: 500 });
+    console.error("[subscription] 错误:", error);
+    return NextResponse.json({ error: "请求失败" }, { status: 500 });
   }
 }

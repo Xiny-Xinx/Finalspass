@@ -1,8 +1,15 @@
+/**
+ * 额外配额购买（支付宝收款码）
+ *
+ * 流程：
+ *   1. 返回支付宝收款码信息 + 金额
+ *   2. 用户扫码付款后，联系客服告知已付款
+ *   3. 管理员在后台手动添加额外配额
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUser } from "@/lib/quota-guard";
-import { createCheckout, isLsConfigured } from "@/lib/lemonsqueezy";
-import { createOrder } from "@/lib/order-store";
 import { EXTRA_QUOTA_PACKS } from "@/lib/constants";
 
 const schema = z.object({
@@ -13,64 +20,31 @@ export async function POST(req: NextRequest) {
   const auth = getAuthUser(req);
   if (!auth) return NextResponse.json({ error: "请先登录" }, { status: 401 });
 
-  if (!isLsConfigured()) {
-    return NextResponse.json({ error: "支付系统未配置" }, { status: 500 });
+  const qrUrl = process.env.NEXT_PUBLIC_ALIPAY_QR_URL || "";
+  if (!qrUrl) {
+    return NextResponse.json({ error: "收款码尚未配置" }, { status: 500 });
   }
 
   try {
     const body = await req.json();
     const { units } = schema.parse(body);
 
-    // 找到匹配的套餐
     const pack = EXTRA_QUOTA_PACKS.find((p) => p.units === units);
     if (!pack) {
       return NextResponse.json({ error: "无效的套餐" }, { status: 400 });
     }
 
-    // 创建订单
-    const order = await createOrder({
-      userId: auth.userId,
-      type: "recharge",
-      amount: pack.priceAUD,
-      tokens: units,
-    });
-
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const redirectUrl = `${baseUrl}/payment/result?out_trade_no=${order.outTradeNo}`;
-
-    // 使用该套餐对应的固定价格 Variant（需先在 LS 后台创建）
-    const variantId = process.env[pack.variantEnv] || "";
-    if (!variantId) {
-      return NextResponse.json({ error: `未配置 ${pack.variantEnv} 环境变量` }, { status: 500 });
-    }
-
-    const checkout = await createCheckout(
-      undefined, // 不传 custom_price，使用 variant 固定价格
-      `FinalsPass 额外配额 ${pack.label}`,
-      `额外 ${units} 次 AI 配额，不限使用时间`,
-      {
-        user_id: auth.userId,
-        type: "extra_quota",
-        units: String(units),
-        out_trade_no: order.outTradeNo,
-      },
-      redirectUrl,
-      variantId
-    );
-
-    if ("error" in checkout) {
-      return NextResponse.json({ error: checkout.error }, { status: 500 });
-    }
-
     return NextResponse.json({
       success: true,
-      redirectUrl: checkout.url,
-      outTradeNo: order.outTradeNo,
-      units,
+      qrPayment: true,
+      units: pack.units,
       amount: pack.priceAUD,
+      label: `${pack.label} · ¥${pack.priceAUD.toFixed(2)}`,
+      qrUrl,
+      message: `请使用支付宝扫描下方二维码支付 ¥${pack.priceAUD.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您添加 ${pack.units} 次额外配额。`,
     });
   } catch (err) {
-    console.error("[extra-quota] 创建订单失败:", err);
-    return NextResponse.json({ error: "创建订单失败" }, { status: 500 });
+    console.error("[extra-quota] 错误:", err);
+    return NextResponse.json({ error: "请求失败" }, { status: 500 });
   }
 }

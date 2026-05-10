@@ -47,6 +47,7 @@ export default function AccountPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [stats, setStats] = useState<{ sessions: number; cards: number; flashcards: number } | null>(null);
+  const [qrModal, setQrModal] = useState<{ label: string; amount: number; qrUrl: string; message: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -84,17 +85,15 @@ export default function AccountPage() {
         body: JSON.stringify({ tier }),
       });
       const data = await res.json();
-      if (res.ok && data.redirectUrl) {
-        // 跳转到支付宝支付
-        window.location.href = data.redirectUrl;
+      if (res.ok && data.qrPayment) {
+        setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message });
       } else {
         setMessage(`失败：${data.error}`);
-        setSubscribing(null);
       }
     } catch {
       setMessage("网络错误");
-      setSubscribing(null);
     }
+    setSubscribing(null);
   }
 
   async function handleLogout() {
@@ -364,9 +363,10 @@ export default function AccountPage() {
                     body: JSON.stringify({ units: pack.units }),
                   });
                   const data = await res.json();
-                  if (res.ok && data.redirectUrl) window.location.href = data.redirectUrl;
-                  else setMessage(`失败：${data.error}`);
-                } catch {}
+                  if (res.ok && data.qrPayment) {
+                    setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message });
+                  } else setMessage(`失败：${data.error}`);
+                } catch { setMessage("网络错误"); }
                 setSubscribing(null);
               }}
               disabled={loading}
@@ -533,6 +533,133 @@ export default function AccountPage() {
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = cancelling ? "0.6" : "1"; }}
               >
                 {cancelling ? "处理中…" : "确认取消"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 支付宝收款码弹窗 ── */}
+      {qrModal && (
+        <div
+          onClick={() => setQrModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 500,
+            background: "var(--overlay)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "fadeIn .12s ease",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--paper)",
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 400,
+              width: "calc(100% - 32px)",
+              boxShadow: "0 16px 48px rgba(0,0,0,.2)",
+              animation: "fadeUp .2s ease",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: "linear-gradient(135deg, #1677ff, #0958d9)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.4rem",
+                margin: "0 auto 16px",
+                color: "white",
+              }}
+            >
+              💳
+            </div>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px" }}>
+              支付宝扫码支付
+            </h3>
+            <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: 4 }}>
+              {qrModal.label}
+            </div>
+            <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "var(--accent)", marginBottom: 20 }}>
+              ¥{qrModal.amount.toFixed(2)}
+            </div>
+
+            {/* 收款码图片 */}
+            <div
+              style={{
+                width: 240,
+                height: 240,
+                margin: "0 auto 20px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "white",
+              }}
+            >
+              <img
+                src={qrModal.qrUrl}
+                alt="支付宝收款码"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                  (e.currentTarget.parentElement!.querySelector(".fallback") as HTMLElement).style.display = "flex";
+                }}
+              />
+              <div className="fallback" style={{ display: "none", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: "0.78rem" }}>
+                <span>⚠️ 收款码加载失败</span>
+                <span>请检查 ALIPAY_QR_URL 配置</span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: "0.8rem", color: "var(--muted)", lineHeight: 1.7, margin: "0 0 20px", textAlign: "left" }}>
+              {qrModal.message}
+            </p>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <a
+                href="/"
+                style={{
+                  background: "var(--accent)",
+                  color: "white",
+                  textDecoration: "none",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "10px 24px",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "opacity .15s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.9"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+              >
+                💬 联系客服
+              </a>
+              <button
+                onClick={() => setQrModal(null)}
+                style={{
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "10px 20px",
+                  fontSize: "0.85rem",
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                }}
+              >
+                关闭
               </button>
             </div>
           </div>
