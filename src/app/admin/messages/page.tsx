@@ -27,6 +27,9 @@ export default function AdminMessagesPage() {
   const [sending, setSending] = useState(false);
   const [announceText, setAnnounceText] = useState("");
   const [announceMsg, setAnnounceMsg] = useState("");
+  const [grantEmail, setGrantEmail] = useState("");
+  const [granting, setGranting] = useState(false);
+  const [grantMsg, setGrantMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/announcement").then((r) => r.json()).then((d) => { if (d.text) setAnnounceText(d.text); }).catch(() => {});
@@ -48,6 +51,21 @@ export default function AdminMessagesPage() {
     try { await fetch("/api/announcement", { method: "DELETE" }); setAnnounceText(""); setAnnounceMsg("✅ 公告已关闭"); }
     catch {}
     setTimeout(() => setAnnounceMsg(""), 3000);
+  }
+
+  async function grantPro() {
+    if (!grantEmail.trim()) return;
+    setGranting(true); setGrantMsg("");
+    try {
+      const res = await fetch("/api/admin/grant-pro", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: grantEmail.trim() }),
+      });
+      const data = await res.json();
+      setGrantMsg(res.ok ? `✅ 已赠送 Pro 至 ${data.email}` : `❌ ${data.error}`);
+    } catch { setGrantMsg("❌ 网络错误"); }
+    setGranting(false);
+    setTimeout(() => setGrantMsg(""), 4000);
   }
 
   useEffect(() => {
@@ -101,13 +119,22 @@ export default function AdminMessagesPage() {
       </div>
 
       {/* ── 公告管理 ── */}
-      <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "var(--accent-subtle)" }}>
+      <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "var(--accent-subtle)", flexWrap: "wrap" }}>
         <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap" }}>📢 公告</span>
         <input value={announceText} onChange={(e) => setAnnounceText(e.target.value)} placeholder="输入公告内容…"
-          style={{ flex: 1, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+          style={{ flex: 1, minWidth: 200, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
         <button onClick={saveAnnouncement} style={{ background: "var(--accent)", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: "pointer", fontWeight: 500 }}>发布</button>
         <button onClick={clearAnnouncement} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer" }}>关闭</button>
         {announceMsg && <span style={{ fontSize: "0.72rem", color: "var(--success)" }}>{announceMsg}</span>}
+      </div>
+      {/* ── 赠送 Pro ── */}
+      <div style={{ padding: "8px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "rgba(52,211,153,0.04)" }}>
+        <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap" }}>🎁 送Pro</span>
+        <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="输入用户邮箱…"
+          style={{ width: 260, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+        <button onClick={grantPro} disabled={granting}
+          style={{ background: granting ? "var(--border)" : "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: granting ? "not-allowed" : "pointer", fontWeight: 500, opacity: granting ? 0.6 : 1 }}>{granting ? "赠送中…" : "赠送 Pro"}</button>
+        {grantMsg && <span style={{ fontSize: "0.72rem", color: grantMsg.includes("成功") ? "var(--success)" : "var(--danger)" }}>{grantMsg}</span>}
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
