@@ -17,6 +17,7 @@ interface UserInfo {
 interface QuotaInfo {
   dailyCap: number;
   dailyUsed: number;
+  extraQuota?: number;
 }
 
 const TIER_LABEL: Record<string, string> = {
@@ -61,6 +62,7 @@ export default function AccountPage() {
           setQuota({
             dailyCap: quotaData.dailyCap ?? 30000,
             dailyUsed: quotaData.dailyUsed ?? 0,
+            extraQuota: quotaData.extraQuota ?? 0,
           });
         } else {
           router.push("/login");
@@ -301,7 +303,7 @@ export default function AccountPage() {
             }}
           >
             <span>今日用量</span>
-            <span>{dailyUsed} / {dailyCap} 次</span>
+            <span>{dailyUsed} / {dailyCap} 次{quota?.extraQuota ? ` +${quota.extraQuota}` : ""}</span>
           </div>
           <div
             style={{

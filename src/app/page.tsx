@@ -33,6 +33,7 @@ interface QuotaInfo {
   enabled: boolean;
   tier?: string;
   isLoggedIn?: boolean;
+  extraQuota?: number;
 }
 
 // 付费功能列表（免费版不可用）
@@ -515,7 +516,9 @@ export default function Page() {
           {/* 配额显示：圆形进度环 */}
           {quota && quota.enabled && (
             <div
-              title={isLoggedIn ? `今日已用 ${quota.used} / ${quota.limit} 次` : `已用 ${quota.used} 次`}
+              title={isLoggedIn
+                ? `今日已用 ${quota.used} / ${quota.limit} 次${quota.extraQuota ? ` · 额外剩余 ${quota.extraQuota} 次` : ""}`
+                : `已用 ${quota.used} 次`}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -547,7 +550,12 @@ export default function Page() {
                   {quota.remaining}
                 </text>
               </svg>
-              {quota.remaining <= 5 && (
+              {quota.extraQuota > 0 && (
+                <span style={{ fontSize: "0.6rem", color: "var(--success)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                  +{quota.extraQuota}
+                </span>
+              )}
+              {quota.remaining <= 5 && !quota.extraQuota && (
                 <span style={{ fontSize: "0.6rem", color: "var(--accent)", fontFamily: "monospace" }}>
                   即将用完
                 </span>
@@ -1224,7 +1232,7 @@ export default function Page() {
                     opacity: 0.7,
                   }}
                 >
-                  今日 {quota.used} / {quota.limit} 次
+                  今日 {quota.used} / {quota.limit} 次{quota.extraQuota ? ` (+${quota.extraQuota})` : ""}
                 </div>
               )}
 
