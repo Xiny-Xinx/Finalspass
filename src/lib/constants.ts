@@ -20,7 +20,7 @@ export const MAX_CHAT_HISTORY = 10;
 export const MODEL_QUOTA_COST: Record<string, number> = {
   "deepseek-v4-flash": 1,
   "deepseek-chat": 2,
-  "deepseek-v4-pro": 15,
+  "deepseek-v4-pro": 8,
   "claude-sonnet-4-20250514": 10,
 };
 
@@ -41,7 +41,7 @@ export const TIER_MODEL_CAPS: Record<string, Record<string, number>> = {
 /** 各套餐的每日配额（单位：次，按模型加权） */
 export const TIER_LIMITS: Record<string, number> = {
   free: 30,
-  pro: 120,
+  pro: 220,
   premium: 500,
 };
 

@@ -397,7 +397,7 @@ export default function AccountPage() {
           name="Pro"
           price="A$8.99"
           priceLabel="/月"
-          dailyLimit="120次/天"
+          dailyLimit="220次/天"
           models="全部模型"
           restricted={[]}
           subscribed={currentTier === "pro"}
