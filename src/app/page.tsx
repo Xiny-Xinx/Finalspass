@@ -1381,15 +1381,13 @@ export default function Page() {
                   <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
                   {isAdmin && (
                   <>
-                    <a
-                      href="/admin/messages"
-                      onClick={() => setMenuOpen(false)}
+                    <a href="/admin" onClick={() => setMenuOpen(false)}
                       style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
-                    >
-                      工单
-                    </a>
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}>仪表盘</a>
+                    <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
+                    <a href="/admin/messages" onClick={() => setMenuOpen(false)}
+                      style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}>工单</a>
                     <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
                   </>
                 )}

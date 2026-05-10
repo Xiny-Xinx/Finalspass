@@ -164,7 +164,7 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
-            提交答案 ({answered}/{questions.length})
+            提交答案
           </button>
         </div>
       )}
