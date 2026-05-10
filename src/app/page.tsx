@@ -9,7 +9,7 @@ import QATab from "@/components/QATab";
 import QuizTab from "@/components/QuizTab";
 import { extractFile } from "@/lib/parser";
 import { extractCards, type Card } from "@/lib/api-client";
-import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY } from "@/lib/constants";
+import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY, MODEL_QUOTA_COST } from "@/lib/constants";
 import { fetchSessions, createSession, loadSessionData, clearAllSessions as clearHistory } from "@/lib/history-client";
 import type { SessionMeta } from "@/lib/store";
 import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, TIER_MODELS, type ModelId } from "@/lib/claude";
@@ -889,6 +889,15 @@ export default function Page() {
                                     {detail.badge}
                                   </span>
                                 )}
+                                <span style={{
+                                  marginLeft: "auto",
+                                  fontSize: "0.6rem",
+                                  fontFamily: "monospace",
+                                  color: "var(--muted)",
+                                  opacity: 0.6,
+                                }}>
+                                  {MODEL_QUOTA_COST[m.id] || 1} 单位/次
+                                </span>
                                 {active && (
                                   <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--accent)" }}>
                                     ✓
@@ -901,7 +910,7 @@ export default function Page() {
                                 )}
                               </div>
                               <div style={{ fontSize: "0.68rem", color: isAllowed ? "var(--muted)" : "var(--accent)", lineHeight: 1.5 }}>
-                                {isAllowed ? detail?.summary : "升级套餐即可使用此模型"}
+                                {isAllowed ? `${detail?.summary} · ${MODEL_QUOTA_COST[m.id] || 1}单位/次` : "升级套餐即可使用此模型"}
                               </div>
                             </button>
                           );
