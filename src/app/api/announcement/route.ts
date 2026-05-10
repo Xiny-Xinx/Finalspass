@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
-import { getUserInfo } from "@/lib/support-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +15,12 @@ async function getRedis() {
 async function isAdmin(userId: string): Promise<boolean> {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return false;
-  const info = await getUserInfo(userId);
-  return info?.email === adminEmail;
+  const redis = await getRedis();
+  if (!redis) return false;
+  const raw = await redis.get<any>(`user:${userId}`);
+  if (!raw) return false;
+  const user = typeof raw === "string" ? JSON.parse(raw) : raw;
+  return user.email === adminEmail;
 }
 
 /** GET: 获取当前公告（公开） */
