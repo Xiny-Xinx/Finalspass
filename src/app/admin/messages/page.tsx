@@ -36,6 +36,7 @@ export default function AdminMessagesPage() {
   const [extraUnits, setExtraUnits] = useState(50);
   const [extraGranting, setExtraGranting] = useState(false);
   const [extraMsg, setExtraMsg] = useState("");
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("/api/announcement").then((r) => r.json()).then((d) => { if (d.text) setAnnounceText(d.text); }).catch(() => {});
@@ -89,6 +90,33 @@ export default function AdminMessagesPage() {
     setTimeout(() => setExtraMsg(""), 4000);
   }
 
+  async function handleConfirmPayment(pendingId: string) {
+    try {
+      const res = await fetch("/api/admin/pending-payments", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendingId, action: "confirm" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPendingPayments((prev) => prev.filter((p: any) => p.id !== pendingId));
+        setGrantMsg(data.message || "✅ 已确认");
+      } else {
+        setGrantMsg(`❌ ${data.error}`);
+      }
+    } catch { setGrantMsg("❌ 网络错误"); }
+    setTimeout(() => setGrantMsg(""), 4000);
+  }
+
+  async function handleRejectPayment(pendingId: string) {
+    try {
+      await fetch("/api/admin/pending-payments", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendingId, action: "reject" }),
+      });
+      setPendingPayments((prev) => prev.filter((p: any) => p.id !== pendingId));
+    } catch {}
+  }
+
   useEffect(() => {
     fetch("/api/user/support/admin")
       .then((r) => r.json())
@@ -97,6 +125,13 @@ export default function AdminMessagesPage() {
       })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
+
+    fetch("/api/admin/pending-payments")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.payments) setPendingPayments(data.payments);
+      })
+      .catch(() => {});
   }, [router]);
 
   async function selectConv(userId: string) {
@@ -173,6 +208,42 @@ export default function AdminMessagesPage() {
           style={{ background: extraGranting ? "var(--border)" : "#2563eb", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.78rem", cursor: extraGranting ? "not-allowed" : "pointer", fontWeight: 500, opacity: extraGranting ? 0.6 : 1 }}>{extraGranting ? "添加中…" : "添加"}</button>
         {extraMsg && <span style={{ fontSize: "0.72rem", color: extraMsg.startsWith("✅") ? "var(--success)" : "var(--danger)" }}>{extraMsg}</span>}
       </div>
+
+      {/* ── 待确认支付 ── */}
+      {pendingPayments.length > 0 && (
+        <div style={{ borderBottom: "1px solid var(--border)", background: "rgba(251,191,36,0.04)" }}>
+          <div style={{ padding: "8px 20px", fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)" }}>
+            🕐 待确认支付（{pendingPayments.length}）
+          </div>
+          {pendingPayments.map((p: any) => (
+            <div key={p.id} style={{ padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)" }}>{p.email}</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+                  <span>{p.label}</span>
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>¥{p.amount?.toFixed(2)}</span>
+                  <span>📱 {p.phone}</span>
+                  <span style={{ opacity: 0.6 }}>{new Date(p.timestamp).toLocaleString("zh-CN")}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => handleConfirmPayment(p.id)}
+                  style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 500 }}
+                >
+                  确认收款
+                </button>
+                <button
+                  onClick={() => handleRejectPayment(p.id)}
+                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.75rem", color: "var(--muted)", cursor: "pointer" }}
+                >
+                  拒绝
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* 客户列表 */}

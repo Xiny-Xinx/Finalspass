@@ -47,7 +47,18 @@ export default function AccountPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [stats, setStats] = useState<{ sessions: number; cards: number; flashcards: number } | null>(null);
-  const [qrModal, setQrModal] = useState<{ label: string; amount: number; qrUrl: string; message: string } | null>(null);
+  const [qrModal, setQrModal] = useState<{
+    label: string;
+    amount: number;
+    qrUrl: string;
+    message: string;
+    type: "subscription" | "extra_quota";
+    tier?: "pro" | "premium";
+    units?: number;
+  } | null>(null);
+  const [phone, setPhone] = useState("");
+  const [phoneSubmitted, setPhoneSubmitted] = useState(false);
+  const [phoneSubmitting, setPhoneSubmitting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -86,7 +97,9 @@ export default function AccountPage() {
       });
       const data = await res.json();
       if (res.ok && data.qrPayment) {
-        setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message });
+        setPhone("");
+        setPhoneSubmitted(false);
+        setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message, type: "subscription", tier });
       } else {
         setMessage(`失败：${data.error}`);
       }
@@ -126,6 +139,34 @@ export default function AccountPage() {
     } finally {
       setCancelling(false);
     }
+  }
+
+  async function handlePhoneSubmit() {
+    if (!phone.trim() || !qrModal || phoneSubmitting) return;
+    setPhoneSubmitting(true);
+    try {
+      const res = await fetch("/api/user/payment-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: qrModal.type,
+          tier: qrModal.tier,
+          units: qrModal.units,
+          amount: qrModal.amount,
+          phone: phone.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPhoneSubmitted(true);
+        setMessage("✅ 提交成功！管理员确认后会为您激活，请留意套餐状态变化");
+      } else {
+        setMessage(`提交失败：${data.error}`);
+      }
+    } catch {
+      setMessage("网络错误，请重试");
+    }
+    setPhoneSubmitting(false);
   }
 
   if (loading) {
@@ -364,7 +405,9 @@ export default function AccountPage() {
                   });
                   const data = await res.json();
                   if (res.ok && data.qrPayment) {
-                    setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message });
+                    setPhone("");
+                    setPhoneSubmitted(false);
+                    setQrModal({ label: data.label, amount: data.amount, qrUrl: data.qrUrl, message: data.message, type: "extra_quota", units: pack.units });
                   } else setMessage(`失败：${data.error}`);
                 } catch { setMessage("网络错误"); }
                 setSubscribing(null);
@@ -623,45 +666,116 @@ export default function AccountPage() {
               </div>
             </div>
 
-            <p style={{ fontSize: "0.8rem", color: "var(--muted)", lineHeight: 1.7, margin: "0 0 20px", textAlign: "left" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--muted)", lineHeight: 1.7, margin: "0 0 16px", textAlign: "left" }}>
               {qrModal.message}
             </p>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <a
-                href="/"
-                style={{
-                  background: "var(--accent)",
-                  color: "white",
-                  textDecoration: "none",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "10px 24px",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "opacity .15s",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.9"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
-              >
-                💬 联系客服
-              </a>
-              <button
-                onClick={() => setQrModal(null)}
-                style={{
-                  background: "none",
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  padding: "10px 20px",
-                  fontSize: "0.85rem",
-                  color: "var(--muted)",
-                  cursor: "pointer",
-                }}
-              >
-                关闭
-              </button>
-            </div>
+            {!phoneSubmitted ? (
+              <>
+                {/* 手机号输入 */}
+                <div style={{ marginBottom: 16, textAlign: "left" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--ink)", display: "block", marginBottom: 6 }}>
+                    📱 付款支付宝绑定手机号
+                  </label>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="请输入您付款的支付宝绑定的手机号"
+                    disabled={phoneSubmitting}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border)",
+                      background: "var(--input-bg)",
+                      color: "var(--ink)",
+                      fontSize: "0.9rem",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={handlePhoneSubmit}
+                    disabled={!phone.trim() || phoneSubmitting}
+                    style={{
+                      flex: 1,
+                      background: phone.trim() && !phoneSubmitting ? "var(--accent)" : "var(--border)",
+                      color: phone.trim() && !phoneSubmitting ? "white" : "var(--muted)",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "12px 0",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      cursor: phone.trim() && !phoneSubmitting ? "pointer" : "not-allowed",
+                      transition: "opacity .15s",
+                    }}
+                  >
+                    {phoneSubmitting ? "提交中…" : "我已付款，提交确认"}
+                  </button>
+                  <button
+                    onClick={() => setQrModal(null)}
+                    disabled={phoneSubmitting}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "12px 20px",
+                      fontSize: "0.85rem",
+                      color: "var(--muted)",
+                      cursor: phoneSubmitting ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    关闭
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* 提交成功后 */
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>✅</div>
+                <p style={{ fontSize: "0.85rem", color: "var(--success)", fontWeight: 600, margin: "0 0 12px" }}>
+                  提交成功！
+                </p>
+                <p style={{ fontSize: "0.78rem", color: "var(--muted)", lineHeight: 1.7, margin: "0 0 16px" }}>
+                  管理员确认后会为您激活套餐<br />
+                  您也可以回到首页打开客服聊天询问进度
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                  <a
+                    href="/"
+                    style={{
+                      background: "var(--accent)",
+                      color: "white",
+                      textDecoration: "none",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "10px 24px",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    返回首页
+                  </a>
+                  <button
+                    onClick={() => setQrModal(null)}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "10px 20px",
+                      fontSize: "0.85rem",
+                      color: "var(--muted)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
