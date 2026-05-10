@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TIER_PRICES, TIER_LIMITS } from "@/lib/constants";
+import { TIER_PRICES, TIER_LIMITS, EXTRA_QUOTA_PACKS } from "@/lib/constants";
 import { TIER_MODELS, type ModelId } from "@/lib/claude";
 
 interface UserInfo {
@@ -341,6 +341,49 @@ export default function AccountPage() {
           {message}
         </div>
       )}
+
+      {/* ── 额外配额 ── */}
+      <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+        <h3 style={{ fontSize: "0.95rem", margin: "0 0 4px", fontWeight: 600 }}>⚡ 额外配额</h3>
+        <p style={{ fontSize: "0.78rem", color: "var(--muted)", margin: "0 0 14px" }}>
+          每日额度用完后，可购买额外配额继续使用，不限时间
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {EXTRA_QUOTA_PACKS.map((pack) => (
+            <button
+              key={pack.units}
+              onClick={async () => {
+                setSubscribing(`extra_${pack.units}`);
+                setMessage(null);
+                try {
+                  const res = await fetch("/api/user/extra-quota", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ units: pack.units }),
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.redirectUrl) window.location.href = data.redirectUrl;
+                  else setMessage(`失败：${data.error}`);
+                } catch {}
+                setSubscribing(null);
+              }}
+              disabled={subscribing === `extra_${pack.units}`}
+              style={{
+                flex: 1, minWidth: 120,
+                background: subscribing === `extra_${pack.units}` ? "var(--border)" : "var(--accent-glow)",
+                border: `1px solid ${subscribing === `extra_${pack.units}` ? "var(--border)" : "var(--accent)"}`,
+                borderRadius: 10, padding: "10px 14px", cursor: "pointer", textAlign: "center",
+                transition: "all .15s", opacity: subscribing === `extra_${pack.units}` ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => { if (subscribing !== `extra_${pack.units}`) { e.currentTarget.style.background = "var(--accent-subtle)"; }}}
+              onMouseLeave={(e) => { if (subscribing !== `extra_${pack.units}`) { e.currentTarget.style.background = "var(--accent-glow)"; }}}
+            >
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--accent)" }}>+{pack.units}</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: 2 }}>{pack.label.split(" ")[0]}</div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)", marginTop: 4 }}>A${pack.priceAUD.toFixed(2)}</div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── 套餐选择 ── */}
       <h2 style={{ fontSize: "1.05rem", margin: "0 0 16px", fontWeight: 600 }}>选择套餐</h2>
