@@ -4,21 +4,32 @@ import { validateFile } from "@/lib/parser";
 import { ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 interface UploadZoneProps {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
 }
 
-export default function UploadZone({ onFile }: UploadZoneProps) {
+export default function UploadZone({ onFiles }: UploadZoneProps) {
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handle = (file: File) => {
-    try {
-      validateFile(file);
+  const handleFiles = (fileList: FileList) => {
+    const files = Array.from(fileList);
+    const errors: string[] = [];
+    const valid: File[] = [];
+    for (const f of files) {
+      try {
+        validateFile(f);
+        valid.push(f);
+      } catch (err: unknown) {
+        errors.push(`${f.name}: ${err instanceof Error ? err.message : "无法处理"}`);
+      }
+    }
+    if (errors.length > 0) {
+      setError(errors.join("；"));
+    }
+    if (valid.length > 0) {
       setError(null);
-      onFile(file);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "无法处理该文件");
+      onFiles(valid);
     }
   };
 
@@ -28,43 +39,22 @@ export default function UploadZone({ onFile }: UploadZoneProps) {
   return (
     <div>
       <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          const files = e.dataTransfer.files;
-          if (files.length > 1) {
-            setError("仅支持单文件上传，请一次拖入一个文件");
-            return;
-          }
-          const f = files[0];
-          if (f) handle(f);
-        }}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); handleFiles(e.dataTransfer.files); }}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
         role="button"
         tabIndex={0}
         aria-label="上传课件文件"
         style={{
           border: `2px dashed ${drag ? "var(--accent)" : "var(--border)"}`,
           borderRadius: "var(--radius-lg)",
-          padding: "60px 28px",
+          padding: "50px 28px",
           textAlign: "center",
           cursor: "pointer",
-          background: drag
-            ? "color-mix(in srgb, var(--accent) 6%, var(--card))"
-            : "var(--card)",
+          background: drag ? "color-mix(in srgb, var(--accent) 6%, var(--card))" : "var(--card)",
           transform: drag ? "scale(1.01)" : "scale(1)",
-          boxShadow: drag ? "var(--shadow-md)" : "var(--shadow-sm)",
           transition: "all .25s ease",
         }}
       >
@@ -72,88 +62,35 @@ export default function UploadZone({ onFile }: UploadZoneProps) {
           ref={inputRef}
           type="file"
           accept={accept}
+          multiple
           style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) {
-              handle(f);
-              e.target.value = "";
-            }
-          }}
+          onChange={(e) => { if (e.target.files) { handleFiles(e.target.files); e.target.value = ""; } }}
         />
-        <div
-          style={{
-            fontSize: "3rem",
-            marginBottom: 16,
-            filter: drag ? "drop-shadow(0 2px 8px rgba(0,0,0,.12))" : "none",
-            transition: "filter .25s ease",
-          }}
-        >
+        <div style={{ fontSize: "3rem", marginBottom: 12, transition: "filter .25s ease" }}>
           {drag ? "📥" : "📂"}
         </div>
-        <h2
-          style={{
-            fontFamily: "'Noto Serif SC', Georgia, serif",
-            fontSize: "1.15rem",
-            marginBottom: 10,
-          }}
-        >
+        <h2 style={{ fontFamily: "'Noto Serif SC', Georgia, serif", fontSize: "1.1rem", marginBottom: 8 }}>
           {drag ? "松开以上传" : "上传课堂资料"}
         </h2>
-        <p
-          style={{
-            color: "var(--muted)",
-            fontSize: "0.84rem",
-            lineHeight: 1.7,
-          }}
-        >
-          支持 {ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(" · ")}{" "}
-          (单文件 ≤ {maxMb}MB)
-          <br />
-          AI 自动提炼核心知识点,过滤无关内容
+        <p style={{ color: "var(--muted)", fontSize: "0.84rem", lineHeight: 1.7 }}>
+          支持 {ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(" · ")} (每文件 ≤ {maxMb}MB)
+          <br />支持多文件批量上传，AI 自动提炼全部知识点
         </p>
-        <div
-          style={{
-            marginTop: 20,
-            display: "inline-block",
-            background: "var(--accent)",
-            color: "#fff",
-            padding: "10px 28px",
-            borderRadius: "var(--radius-md)",
-            fontSize: "0.84rem",
-            fontFamily: "monospace",
-            letterSpacing: "0.04em",
-            transition: "background .2s, transform .2s",
-            boxShadow: "0 2px 8px rgba(37, 99, 235, 0.2)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--accent-hover)";
-            e.currentTarget.style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "var(--accent)";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
+        <div style={{
+          marginTop: 16, display: "inline-block", background: "var(--accent)", color: "#fff",
+          padding: "10px 28px", borderRadius: "var(--radius-md)", fontSize: "0.84rem",
+          fontFamily: "monospace", letterSpacing: "0.04em", transition: "background .2s, transform .2s",
+          boxShadow: "0 2px 8px rgba(37, 99, 235, 0.2)",
+        }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-hover)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.transform = "translateY(0)"; }}
         >
-          点击上传 或 拖拽文件至此
+          选择文件 或 拖拽至此
         </div>
       </div>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            marginTop: 14,
-            padding: "10px 14px",
-            border: "1.5px solid var(--danger)",
-            background: "var(--danger-glow)",
-            color: "var(--danger)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "0.82rem",
-            textAlign: "center",
-            animation: "fadeUp .25s ease",
-          }}
-        >
+        <div role="alert" style={{ marginTop: 14, padding: "10px 14px", border: "1.5px solid var(--danger)", background: "var(--danger-glow)", color: "var(--danger)", borderRadius: "var(--radius-md)", fontSize: "0.82rem", textAlign: "center", animation: "fadeUp .25s ease" }}>
           ⚠️ {error}
         </div>
       )}

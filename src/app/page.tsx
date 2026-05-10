@@ -352,30 +352,37 @@ export default function Page() {
     try { localStorage.setItem(THEME_KEY, next ? "dark" : "light"); } catch {}
   }, [dark]);
 
-  const handleFile = useCallback(async (file: File) => {
-    setFileName(file.name);
+  const handleFiles = useCallback(async (files: File[]) => {
+    setFileName(files.map((f) => f.name).join(", "));
     setStage("processing");
-    setProcessMsg("准备中...");
+    setProcessMsg(`准备处理 ${files.length} 个文件...`);
     setError(null);
 
+    let allText = "";
+    let allCards: Card[] = [];
+
     try {
-      const ext = file.name.toLowerCase().split(".").pop();
-      if (ext === "pdf") setProcessMsg("正在加载 PDF 解析器...");
-      else if (ext === "pptx") setProcessMsg("正在解析 PPT 幻灯片...");
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessMsg(`正在解析 (${i + 1}/${files.length}) ${file.name}...`);
 
-      const text = await extractFile(file, (cur, total) =>
-        setProcessMsg(`正在解析第 ${cur} / ${total} 页...`)
-      );
-      const truncated = text.slice(0, MAX_EXTRACT_CHARS);
+        const text = await extractFile(file, (cur, total) =>
+          setProcessMsg(`正在解析第 ${cur}/${total} 页 - ${file.name}`)
+        );
+        allText += `\n\n===== ${file.name} =====\n\n${text}`;
 
-      setProcessMsg("AI 正在提炼知识点...");
-      const data = await extractCards(text, { model });
+        setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length})...`);
+        const data = await extractCards(text, { model });
+        allCards = [...allCards, ...data.cards];
+      }
 
-      setCards(data.cards);
+      const truncated = allText.slice(0, MAX_EXTRACT_CHARS * 2);
+
+      setCards(allCards);
       setPptContent(truncated);
       setTab("cards");
       setStage("results");
-      persist({ fileName: file.name, pptContent: truncated, cards: data.cards });
+      persist({ fileName: files.map((f) => f.name).join(", "), pptContent: truncated, cards: allCards });
       window.dispatchEvent(new CustomEvent("quota-refresh"));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "处理失败";
@@ -701,7 +708,7 @@ export default function Page() {
               </div>
             )}
 
-            <UploadZone onFile={handleFile} />
+            <UploadZone onFiles={handleFiles} />
 
             {/* 最近文件 */}
             {sessionList.length > 0 && (
