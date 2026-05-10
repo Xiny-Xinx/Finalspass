@@ -46,6 +46,7 @@ export default function AccountPage() {
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [stats, setStats] = useState<{ sessions: number; cards: number; flashcards: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -66,6 +67,11 @@ export default function AccountPage() {
       })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
+    // 加载使用统计
+    fetch("/api/user/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {});
   }, [router]);
 
   async function handleSubscribe(tier: "pro" | "premium") {
@@ -307,6 +313,22 @@ export default function AccountPage() {
           }}
         >
           {message}
+        </div>
+      )}
+
+      {/* 使用统计 */}
+      {stats && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "14px 16px" }}>
+          {[
+            ["📄", "课件", stats.sessions],
+            ["📇", "卡片", stats.cards],
+            ["🃏", "闪卡", stats.flashcards],
+          ].map(([icon, label, count]) => (
+            <div key={label as string} style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", fontFamily: "monospace" }}>{count}</div>
+              <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 2 }}>{icon} {label as string}</div>
+            </div>
+          ))}
         </div>
       )}
 
