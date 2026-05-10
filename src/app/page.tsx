@@ -10,7 +10,7 @@ import QuizTab from "@/components/QuizTab";
 import { extractFile } from "@/lib/parser";
 import { extractCards, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY } from "@/lib/constants";
-import { saveSession, listSessions, loadSession, deleteSession, clearAllSessions } from "@/lib/store";
+import { fetchSessions, createSession, loadSessionData, clearAllSessions as clearHistory } from "@/lib/history-client";
 import type { SessionMeta } from "@/lib/store";
 import { MODELS, MODEL_DETAILS, DEFAULT_MODEL, TIER_MODELS, type ModelId } from "@/lib/claude";
 
@@ -247,8 +247,8 @@ export default function Page() {
     const el = document.documentElement;
     const cur = el.getAttribute("data-theme");
     setDark(cur === "dark");
-    setSessionList(listSessions());
-  }, []);
+    fetchSessions(isLoggedIn).then(setSessionList);
+  }, [isLoggedIn]);
 
   // 获取今日配额 & 登录状态
   useEffect(() => {
@@ -309,9 +309,7 @@ export default function Page() {
   // 切换到 results 时自动保存历史
   useEffect(() => {
     if (stage === "results" && cards.length > 0) {
-      try {
-        saveSession({ fileName, pptContent, cards, qaHistory: [] });
-      } catch {}
+      createSession(isLoggedIn, { fileName, pptContent, cards, qaHistory: [] });
     }
   }, [stage, fileName, pptContent, cards]);
 
@@ -372,8 +370,8 @@ export default function Page() {
     persist(null);
   };
 
-  const loadHistorySession = useCallback((id: string) => {
-    const data = loadSession(id);
+  const loadHistorySession = useCallback(async (id: string) => {
+    const data = await loadSessionData(isLoggedIn, id);
     if (!data) return;
     setFileName(data.fileName);
     setPptContent(data.pptContent);
@@ -381,7 +379,7 @@ export default function Page() {
     setTab("cards");
     setStage("results");
     setMenuOpen(false);
-  }, []);
+  }, [isLoggedIn]);
 
   // 打开客服时加载历史消息和管理员回复
   useEffect(() => {
@@ -462,7 +460,7 @@ export default function Page() {
         <button
           type="button"
           onClick={() => {
-            setSessionList(listSessions());
+            fetchSessions(isLoggedIn).then(setSessionList);
             setMenuOpen(true);
           }}
           aria-label="打开菜单"
