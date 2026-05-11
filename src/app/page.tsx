@@ -230,6 +230,23 @@ export default function Page() {
   const [detailCache, setDetailCache] = useState<Record<string, string>>({});
   const [supportChat, setSupportChat] = useState<{role:"user"|"assistant"; content:string}[]>([]);
   const [supportLoading, setSupportLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ title: string; summary: string; fileName: string; sessionId: string }[]>([]);
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setSearchQuery(v);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (!v.trim()) { setSearchResults([]); return; }
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/user/history/search?q=${encodeURIComponent(v)}`);
+        const d = await res.json();
+        setSearchResults(d.results || []);
+      } catch { setSearchResults([]); }
+    }, 300);
+  };
   const [model, setModel] = useState<ModelId>(() => {
     try {
       const stored = typeof window !== "undefined" ? localStorage.getItem("finalspass-model") : null;
@@ -1237,6 +1254,43 @@ export default function Page() {
                 <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>+</span>
                 新建上传
               </button>
+            </div>
+
+            {/* ── 全局搜索 ── */}
+            <div style={{ padding: "0 14px 10px" }}>
+              <div style={{ position: "relative" }}>
+                <input
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  placeholder="🔍 搜索所有历史知识点…"
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px 8px 32px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--sidebar-border)",
+                    background: "var(--sidebar-hover)",
+                    color: "var(--ink)",
+                    fontSize: "0.78rem",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: "0.72rem", opacity: 0.4, pointerEvents: "none" }}>🔍</span>
+              </div>
+              {searchResults.length > 0 && (
+                <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 2 }}>
+                  {searchResults.slice(0, 5).map((r, i) => (
+                    <button key={i} onClick={() => loadHistorySession(r.sessionId)}
+                      style={{ textAlign: "left", font: "inherit", width: "100%", padding: "6px 10px", borderRadius: "var(--radius-sm)", background: "none", border: "none", cursor: "pointer", transition: "background .15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--sidebar-hover)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                    >
+                      <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
+                      <div style={{ fontSize: "0.62rem", color: "var(--muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fileName} · {r.summary.slice(0, 30)}…</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── 历史记录列表 ── */}
