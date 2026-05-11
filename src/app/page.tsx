@@ -1217,6 +1217,7 @@ export default function Page() {
               style={{
                 flex: 1,
                 overflow: "auto",
+                overscrollBehavior: "contain",
                 padding: "0 10px 8px",
               }}
             >
@@ -1448,11 +1449,7 @@ export default function Page() {
                   <>
                     <a href="/admin" onClick={() => setMenuOpen(false)}
                       style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}>仪表盘</a>
-                    <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
-                    <a href="/admin/messages" onClick={() => setMenuOpen(false)}
-                      style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}>工单</a>
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}>管理员</a>
                     <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
                   </>
                 )}
@@ -1595,6 +1592,7 @@ export default function Page() {
             style={{
               flex: 1,
               overflow: "auto",
+              overscrollBehavior: "contain",
               padding: 12,
               display: "flex",
               flexDirection: "column",

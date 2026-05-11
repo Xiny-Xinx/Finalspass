@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,8 @@ async function getRedis() {
   return redisClient;
 }
 
-export async function GET() {
-  const auth = getAuthUser({} as any);
+export async function GET(req: NextRequest) {
+  const auth = getAuthUser(req);
   if (!auth) return NextResponse.json({ error: "请先登录" }, { status: 401 });
 
   const redis = await getRedis();
