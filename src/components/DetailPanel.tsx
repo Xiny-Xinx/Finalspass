@@ -134,6 +134,7 @@ export default function DetailPanel({
           maxWidth: 720,
           maxHeight: "76vh",
           overflowY: "auto",
+          overscrollBehavior: "contain",
           animation: "fadeUp .3s ease",
         }}
       >
