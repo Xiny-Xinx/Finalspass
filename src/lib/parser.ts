@@ -121,6 +121,49 @@ export async function extractPdf(
   return result;
 }
 
+/** 将 PDF 每页渲染为 JPEG base64 图片（用于视觉 AI 提取） */
+export async function renderPdfAsImages(
+  file: File,
+  onProgress?: ParseProgress
+): Promise<string[]> {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf, verbosity: 0 }).promise;
+
+  const MAX_PAGES = 30;
+  const totalPages = Math.min(pdf.numPages, MAX_PAGES);
+  const images: string[] = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    onProgress?.(i, pdf.numPages);
+    try {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.5 }); // 1.5x 缩放保证清晰度
+
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d")!;
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      images.push(dataUrl);
+    } catch (err) {
+      console.warn(`[renderPdfAsImages] 第 ${i} 页渲染失败:`, err);
+      // 跳过渲染失败的页面
+    }
+  }
+
+  if (images.length === 0) {
+    throw new Error("PDF 页面渲染失败，无法提取内容");
+  }
+
+  return images;
+}
+
 // ── 纯文本 ────────────────────────────────────────────────────────────────────
 
 export async function extractTxt(file: File): Promise<string> {

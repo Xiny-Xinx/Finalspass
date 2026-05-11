@@ -9,8 +9,8 @@ import QATab from "@/components/QATab";
 import QuizTab from "@/components/QuizTab";
 import FlashcardTab from "@/components/FlashcardTab";
 import StudyPlanTab from "@/components/StudyPlanTab";
-import { extractFile } from "@/lib/parser";
-import { extractCards, type Card } from "@/lib/api-client";
+import { extractFile, renderPdfAsImages } from "@/lib/parser";
+import { extractCards, extractCardsFromImages, type Card } from "@/lib/api-client";
 import { MAX_EXTRACT_CHARS, STORAGE_KEY, THEME_KEY, MODEL_QUOTA_COST, TIER_FEATURES } from "@/lib/constants";
 import { fetchSessions, createSession, loadSessionData, clearAllSessions as clearHistory } from "@/lib/history-client";
 import type { SessionMeta } from "@/lib/store";
@@ -360,39 +360,77 @@ export default function Page() {
 
     let allText = "";
     let allCards: Card[] = [];
-    const CHUNK_SIZE = 4000; // 每段最多 4000 字，避免超时
+    const CHUNK_SIZE = 4000;
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const isPdf = file.name.toLowerCase().endsWith(".pdf");
+
+        // 先尝试提取文字
         setProcessMsg(`正在解析 (${i + 1}/${files.length}) ${file.name}...`);
 
-        const text = await extractFile(file, (cur, total) =>
-          setProcessMsg(`正在解析第 ${cur}/${total} 页 - ${file.name}`)
-        );
-        allText += `\n\n===== ${file.name} =====\n\n${text}`;
+        try {
+          const extractedText = await extractFile(file, (cur, total) =>
+            setProcessMsg(`正在解析第 ${cur}/${total} 页 - ${file.name}`)
+          );
 
-        // 大文件自动分块处理，避免 Vercel 超时
-        const chunks: string[] = [];
-        for (let j = 0; j < text.length; j += CHUNK_SIZE) {
-          chunks.push(text.slice(j, j + CHUNK_SIZE));
-        }
+          allText += `\n\n===== ${file.name} =====\n\n${extractedText}`;
 
-        for (let k = 0; k < chunks.length; k++) {
-          setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length}) 第${k + 1}/${chunks.length}部分...`);
-          try {
-            const data = await extractCards(chunks[k], { model });
-            if (data.cards && data.cards.length > 0) {
-              allCards = [...allCards, ...data.cards];
+          // 文字很少（< 100 字）的 PDF，可能是扫描件，尝试视觉提取
+          if (isPdf && extractedText.trim().length < 100) {
+            setProcessMsg(`文字内容较少,尝试 AI 视觉识别补充...`);
+            try {
+              const images = await renderPdfAsImages(file, (cur, total) =>
+                setProcessMsg(`AI 视觉识别中 (${cur}/${total}) - ${file.name}`)
+              );
+              const visionData = await extractCardsFromImages(images, { model });
+              if (visionData.cards && visionData.cards.length > 0) {
+                allCards = [...allCards, ...visionData.cards];
+                allText += `\n\n[AI 视觉识别补充]`;
+                continue;
+              }
+            } catch {
+              // 视觉提取失败,改走文字提取
             }
-          } catch (chunkErr) {
-            console.warn(`[chunk ${k}] 跳过:`, chunkErr);
-            // 单个分块失败不影响整体
           }
-        }
 
-        if (allCards.length === 0 && chunks.length > 0) {
-          throw new Error("未能从文件中提炼出知识点，请确认文件包含可识别的文字内容，或尝试切换模型重试");
+          // 文字分块处理 + AI 提炼
+          const chunks: string[] = [];
+          for (let j = 0; j < extractedText.length; j += CHUNK_SIZE) {
+            chunks.push(extractedText.slice(j, j + CHUNK_SIZE));
+          }
+
+          for (let k = 0; k < chunks.length; k++) {
+            setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length}) 第${k + 1}/${chunks.length}部分...`);
+            try {
+              const data = await extractCards(chunks[k], { model });
+              if (data.cards && data.cards.length > 0) {
+                allCards = [...allCards, ...data.cards];
+              }
+            } catch (chunkErr) {
+              console.warn(`[chunk ${k}] 跳过:`, chunkErr);
+            }
+          }
+
+          if (allCards.length === 0 && chunks.length > 0) {
+            throw new Error(
+              "未能从文件中提炼出知识点。可能原因：① 文件是扫描件/图片，不含可选文字，请先用 iLovePDF 等工具 OCR 转成文字版 PDF 再上传；② 当前模型能力不足，可尝试切换到 DeepSeek V4 Pro 或 Claude"
+            );
+          }
+        } catch (err) {
+          // 文字提取失败,PDF 则尝试视觉提取
+          if (isPdf) {
+            setProcessMsg(`PDF 无文字内容,切换到 AI 视觉识别...`);
+            const images = await renderPdfAsImages(file, (cur, total) =>
+              setProcessMsg(`AI 视觉识别中 (${cur}/${total}) - ${file.name}`)
+            );
+            const data = await extractCardsFromImages(images, { model });
+            allCards = [...allCards, ...(data.cards ?? [])];
+            allText += `\n\n===== ${file.name} =====\n\n[AI 视觉识别提取]`;
+          } else {
+            throw err; // 非 PDF 文件文字提取失败直接报错
+          }
         }
       }
 

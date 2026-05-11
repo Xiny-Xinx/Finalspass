@@ -74,6 +74,14 @@ export function extractCards(
   return postJson("/api/extract", { content, model: options?.model ?? DEFAULT_MODEL }, options);
 }
 
+/** 视觉提取：将 PDF 页面图片发给 AI 直接看图提炼知识点 */
+export function extractCardsFromImages(
+  images: string[],
+  options?: FetchJsonOptions & { model?: ModelId }
+): Promise<{ cards: Card[] }> {
+  return postJson("/api/extract/vision", { images, model: options?.model ?? DEFAULT_MODEL }, options);
+}
+
 export function askQuestion(
   payload: {
     question: string;
