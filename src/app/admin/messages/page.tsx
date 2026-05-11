@@ -183,7 +183,7 @@ export default function AdminMessagesPage() {
       .then((data) => {
         if (data.conversations) setConvs(data.conversations);
       })
-      .catch(() => router.push("/login"))
+      .catch(() => router.push("/login?redirect=/admin/messages"))
       .finally(() => setLoading(false));
 
     fetch("/api/admin/pending-payments")

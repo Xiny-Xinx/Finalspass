@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     <tr><td style="padding:6px 0;color:#666">提交时间</td><td>${new Date().toLocaleString("zh-CN")}</td></tr>
   </table>
   <p style="color:#666;font-size:0.85rem;margin:16px 0">请核对支付宝收款记录中的手机号和金额，确认无误后前往后台激活。</p>
-  <a href="https://finalspass.top/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台激活 →</a>
+  <a href="https://finalspass.top/login?redirect=/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台激活 →</a>
 </div>`,
         });
         console.log("[payment-confirm] 邮件通知成功");

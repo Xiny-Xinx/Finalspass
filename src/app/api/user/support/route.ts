@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     <div style="font-size:0.82rem;color:#666;margin-bottom:4px">用户消息：</div>
     <div style="font-size:0.95rem;white-space:pre-wrap">${question}</div>
   </div>
-  <a href="https://finalspass.top/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台回复 →</a>
+  <a href="https://finalspass.top/login?redirect=/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台回复 →</a>
 </div>`,
           });
           console.log("[support] 邮件通知成功");
