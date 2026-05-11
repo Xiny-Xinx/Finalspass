@@ -382,11 +382,17 @@ export default function Page() {
           setProcessMsg(`AI 正在提炼知识点 (${i + 1}/${files.length}) 第${k + 1}/${chunks.length}部分...`);
           try {
             const data = await extractCards(chunks[k], { model });
-            allCards = [...allCards, ...(data.cards ?? [])];
+            if (data.cards && data.cards.length > 0) {
+              allCards = [...allCards, ...data.cards];
+            }
           } catch (chunkErr) {
             console.warn(`[chunk ${k}] 跳过:`, chunkErr);
             // 单个分块失败不影响整体
           }
+        }
+
+        if (allCards.length === 0 && chunks.length > 0) {
+          throw new Error("未能从文件中提炼出知识点，请确认文件包含可识别的文字内容，或尝试切换模型重试");
         }
       }
 

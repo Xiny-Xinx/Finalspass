@@ -263,7 +263,25 @@ export default function KnowledgeCards({
       </div>
 
       {/* 空状态 */}
-      {filtered.length === 0 && query.trim() ? (
+      {cards.length === 0 && !query.trim() ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "80px 20px",
+            color: "var(--muted)",
+          }}
+        >
+          <div style={{ fontSize: "3rem", marginBottom: 16 }}>📭</div>
+          <div style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: 8, color: "var(--ink)" }}>
+            暂无知识点
+          </div>
+          <div style={{ fontSize: "0.82rem", lineHeight: 1.7, maxWidth: 400, margin: "0 auto" }}>
+            上传课件后，AI 会自动提炼知识点。
+            <br />
+            如已上传文件仍无内容，请确认文件中包含可识别的文字，或尝试切换模型。
+          </div>
+        </div>
+      ) : filtered.length === 0 && query.trim() ? (
         <div
           style={{
             textAlign: "center",
