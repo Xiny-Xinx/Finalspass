@@ -27,6 +27,7 @@ function PaymentResultContent() {
 
   const outTradeNo = searchParams.get("out_trade_no");
   const timedOutRef = useRef(false);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const checkOrder = useCallback(async () => {
     if (timedOutRef.current) return;
@@ -48,7 +49,7 @@ function PaymentResultContent() {
         setStatus("failed");
       } else {
         // pending — 异步通知可能有延迟，继续等待
-        setTimeout(checkOrder, 2000);
+        pollTimerRef.current = setTimeout(checkOrder, 2000);
       }
     } catch {
       setStatus("not_found");
@@ -57,6 +58,9 @@ function PaymentResultContent() {
 
   useEffect(() => {
     checkOrder();
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
   }, [checkOrder]);
 
   // 30 秒超时 — 超过仍未收到 webhook 则引导用户查看账户

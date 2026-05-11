@@ -180,8 +180,9 @@ export async function withQuota(req: Request) {
             const redis = await getRedis();
             if (redis) {
               const ek = `extra_quota:${auth.userId}`;
-              const cur = (await redis.get<number>(ek)) ?? 0;
-              if (cur >= units) await redis.set(ek, cur - units);
+              // 原子扣减，避免并发竞态
+              const remaining = await redis.incrby(ek, -units);
+              if (remaining < 0) await redis.set(ek, 0);
             }
           } else {
             // 正常使用：记入日用量

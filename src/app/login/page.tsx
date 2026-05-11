@@ -84,6 +84,7 @@ export default function LoginPage() {
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             placeholder="your@email.com 或用户名"
+            autoComplete="username"
             required
             style={{
               width: "100%",
@@ -106,6 +107,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
             minLength={6}
             style={{

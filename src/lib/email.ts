@@ -35,7 +35,6 @@ export async function sendEmail(params: {
   }
 
   const from = getFrom();
-  console.log(`[email] 发送邮件 from="${from}" to="${params.to}" subject="${params.subject}"`);
 
   try {
     const res = await fetch(RESEND_API, {

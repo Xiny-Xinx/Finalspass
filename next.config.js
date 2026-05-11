@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   webpack: (config) => {
     // pdfjs-dist 需要这个配置
     config.resolve.alias.canvas = false;

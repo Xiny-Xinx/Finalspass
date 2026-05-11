@@ -68,6 +68,13 @@ export async function setUnread(userId: string, count: number): Promise<void> {
   }
 }
 
+/** 增加管理员未读回复数（原子递增） */
+export async function incrUnread(userId: string): Promise<void> {
+  const redis = await getRedis();
+  if (!redis) return;
+  await redis.incr(`support:unread:${userId}`);
+}
+
 /** 获取管理员未读回复数 */
 export async function getUnread(userId: string): Promise<number> {
   const redis = await getRedis();

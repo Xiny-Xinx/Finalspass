@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
     }
 
     const code = generateCode();
-    console.log(`[send-code] 生成验证码 email="${email}" code="${code}"`);
 
     // 先发送邮件，成功后再存 Redis（避免邮件失败但码已写入）
     const appUrl = getAppUrl(req);

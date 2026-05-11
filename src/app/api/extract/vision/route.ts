@@ -6,7 +6,7 @@ import { withQuota } from "@/lib/quota-guard";
 import { EXTRACT_QUOTA_COST } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const requestSchema = z.object({
   images: z.array(z.string().min(1)).min(1).max(30),

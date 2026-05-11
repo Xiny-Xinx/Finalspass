@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { hashPassword } from "@/lib/auth";
-import { getUserByEmail } from "@/lib/user-store";
+import { getUserByEmail, updatePassword } from "@/lib/user-store";
 
 const schema = z.object({
   email: z.string().email(),
@@ -46,14 +45,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 更新密码
-    user.passwordHash = hashPassword(newPassword);
-    const raw = await redis.get<any>(`user:${user.id}`);
-    if (!raw) return NextResponse.json({ error: "用户数据异常" }, { status: 500 });
-    const userData = typeof raw === "string" ? JSON.parse(raw) : raw;
-    userData.passwordHash = user.passwordHash;
-    await redis.set(`user:${user.id}`, JSON.stringify(userData));
+    const saved = await updatePassword(user.id, newPassword);
+    if (!saved) {
+      return NextResponse.json({ error: "保存失败，请重试" }, { status: 500 });
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true, message: "密码已重置" });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues.map((i) => i.message).join("; ") }, { status: 400 });

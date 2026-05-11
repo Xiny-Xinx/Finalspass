@@ -72,24 +72,6 @@ export default function KnowledgeCards({
       })
     : cards;
 
-  /** Export cards as Markdown and trigger download */
-  const exportMd = () => {
-    const lines = cards.map(
-      (c, i) =>
-        `## ${i + 1}. ${c.title}\n\n${c.summary}\n\n---\n`
-    );
-    const md = `# 知识点汇总\n\n共 ${cards.length} 个知识点\n\n${lines.join(
-      "\n"
-    )}`;
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `知识卡片_${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div>
       {/* 搜索栏 + 导出 */}

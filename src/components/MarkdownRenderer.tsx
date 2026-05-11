@@ -122,8 +122,11 @@ function renderInline(text: string): string {
   s = s.replace(/`([^`]+)`/g, '<code style="background:var(--paper2);padding:1px 5px;border-radius:3px;font-size:0.82em;border:1px solid var(--border);">$1</code>');
   // 加粗 **text**
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  // 链接 [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">$1</a>');
+  // 链接 [text](url) — 过滤 javascript: 协议防止 XSS
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    const href = /^javascript:/i.test(url) ? "#" : url;
+    return `<a href="${href}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">${text}</a>`;
+  });
   return s;
 }
 

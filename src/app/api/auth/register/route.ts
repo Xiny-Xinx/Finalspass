@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { signJWT, serializeCookie } from "@/lib/auth";
 import { createUser } from "@/lib/user-store";
-import { getAppUrl } from "@/lib/app-url";
 import { checkAuthRateLimit, resetAuthRateLimit } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/rate-limit";
 

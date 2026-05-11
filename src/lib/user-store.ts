@@ -130,13 +130,17 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   const redis = await getRedis();
   if (!redis) return null;
 
-  const id = await redis.get<string>(`user:email:${email}`);
-  if (!id) return null;
+  try {
+    const id = await redis.get<string>(`user:email:${email}`);
+    if (!id) return null;
 
-  const raw = await redis.get<any>(`user:${id}`);
-  if (!raw) return null;
+    const raw = await redis.get<any>(`user:${id}`);
+    if (!raw) return null;
 
-  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+    return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+  } catch {
+    return null;
+  }
 }
 
 /** 根据用户名查找用户 */
@@ -144,13 +148,17 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   const redis = await getRedis();
   if (!redis) return null;
 
-  const id = await redis.get<string>(`user:username:${username}`);
-  if (!id) return null;
+  try {
+    const id = await redis.get<string>(`user:username:${username}`);
+    if (!id) return null;
 
-  const raw = await redis.get<any>(`user:${id}`);
-  if (!raw) return null;
+    const raw = await redis.get<any>(`user:${id}`);
+    if (!raw) return null;
 
-  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+    return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+  } catch {
+    return null;
+  }
 }
 
 /** 根据 ID 查找用户 */
@@ -158,10 +166,13 @@ export async function getUserById(id: string): Promise<User | null> {
   const redis = await getRedis();
   if (!redis) return null;
 
-  const raw = await redis.get<any>(`user:${id}`);
-  if (!raw) return null;
-
-  return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+  try {
+    const raw = await redis.get<any>(`user:${id}`);
+    if (!raw) return null;
+    return (typeof raw === "string" ? JSON.parse(raw) : raw) as User;
+  } catch {
+    return null;
+  }
 }
 
 /** 验证登录（login 可以是邮箱或用户名） */

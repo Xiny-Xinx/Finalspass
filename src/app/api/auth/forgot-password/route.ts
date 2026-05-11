@@ -5,6 +5,8 @@ import { getUserByEmail } from "@/lib/user-store";
 import { sendEmail } from "@/lib/email";
 import { resetPasswordEmail } from "@/lib/email-templates";
 import { getAppUrl } from "@/lib/app-url";
+import { getClientIP } from "@/lib/rate-limit";
+import { checkAuthRateLimit } from "@/lib/rate-limiter";
 
 const schema = z.object({
   email: z.string().email("请输入有效的邮箱地址"),
@@ -12,6 +14,12 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIP(req);
+    const rateCheck = await checkAuthRateLimit(ip, 3, 300);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+    }
+
     const body = await req.json();
     const { email } = schema.parse(body);
 

@@ -40,8 +40,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "该邮箱未注册" }, { status: 404 });
 
   const extraKey = `extra_quota:${userId}`;
-  const current = (await redis.get<number>(extraKey)) ?? 0;
-  await redis.set(extraKey, current + units);
+  const total = await redis.incrby(extraKey, units);
 
-  return NextResponse.json({ success: true, email, units, total: current + units });
+  return NextResponse.json({ success: true, email, units, total });
 }

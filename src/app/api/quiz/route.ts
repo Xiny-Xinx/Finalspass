@@ -92,7 +92,7 @@ ${content.slice(0, MAX_QUIZ_CHARS)}`;
     const data = responseSchema.parse(parsed);
 
     // 自动扣除 tokens
-    await guard.deduct(QUIZ_QUOTA_COST);
+    await guard.deduct(QUIZ_QUOTA_COST, model);
 
     return NextResponse.json({ questions: data.questions });
   } catch (error: unknown) {

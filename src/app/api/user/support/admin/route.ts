@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActiveUsers, getConversation, addMessage, setUnread, getUserInfo } from "@/lib/support-store";
+import { getActiveUsers, getConversation, addMessage, incrUnread, getUserInfo } from "@/lib/support-store";
 import { getAuthUser } from "@/lib/quota-guard";
 
 export const dynamic = "force-dynamic";
@@ -62,9 +62,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "参数错误" }, { status: 400 });
   }
 
-  // 保存管理员回复 + 标记客户未读
+  // 保存管理员回复 + 标记客户未读（原子递增，避免并发覆盖）
   await addMessage(userId, { role: "admin", content: content.trim() });
-  await setUnread(userId, 1);
+  await incrUnread(userId);
 
   return NextResponse.json({ success: true });
 }

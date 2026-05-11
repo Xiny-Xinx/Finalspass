@@ -319,7 +319,9 @@ export default function Page() {
         setModelPopoverOpen(false);
       } else if (e.key === "1") setTab("cards");
       else if (e.key === "2") setTab("qa");
-      else if (e.key === "3") setTab("quiz");
+      else if (e.key === "3" && tabAllowed(quota?.tier ?? "free", "quiz")) setTab("quiz");
+      else if (e.key === "4" && tabAllowed(quota?.tier ?? "free", "flashcard")) setTab("flashcard");
+      else if (e.key === "5" && tabAllowed(quota?.tier ?? "free", "studyplan")) setTab("studyplan");
       else if (e.key === "/" && stage === "results") {
         e.preventDefault();
         setTab("qa");
@@ -455,7 +457,7 @@ export default function Page() {
       setPptContent(truncated);
       setTab("cards");
       setStage("results");
-      persist({ fileName: files.map((f) => f.name).join(", "), pptContent: truncated, cards: allCards });
+      persist({ fileName: files.map((f) => f.name).join(", "), pptContent: truncated, cards: deduped });
       window.dispatchEvent(new CustomEvent("quota-refresh"));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "处理失败";
