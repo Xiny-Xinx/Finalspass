@@ -2,29 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/app-url";
-
-/**
- * 验证码存储（Redis）
- * key: verify_code:{email}
- * value: 6 位数字验证码
- * TTL: 10 分钟
- */
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
+import { getRedis } from "@/lib/redis";
 
 const schema = z.object({
   email: z.string().email("请输入有效的邮箱地址"),

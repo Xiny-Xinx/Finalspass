@@ -346,6 +346,13 @@ export default function Page() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // 浏览器前进/后退时关闭侧边栏
+  useEffect(() => {
+    const onPop = () => setMenuOpen(false);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   const toggleTheme = useCallback(() => {

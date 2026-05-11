@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserByEmail, updatePassword } from "@/lib/user-store";
+import { getRedis } from "@/lib/redis";
 
 const schema = z.object({
   email: z.string().email(),
   code: z.string().length(6),
   newPassword: z.string().min(6).max(128),
 });
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-  }
-  return redisClient;
-}
 
 export async function POST(req: NextRequest) {
   try {

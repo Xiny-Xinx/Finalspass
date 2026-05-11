@@ -6,6 +6,8 @@
  *   flashcard:due:{userId}      → Sorted Set (score = nextReview timestamp)
  */
 
+import { getRedis } from "@/lib/redis";
+
 export interface Flashcard {
   id: string;
   question: string;
@@ -15,15 +17,6 @@ export interface Flashcard {
   ease: number;
   nextReview: number;
   reviewed: number;
-}
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-  }
-  return redisClient;
 }
 
 /** 生成闪卡 */

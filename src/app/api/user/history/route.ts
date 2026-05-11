@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
 import type { SessionMeta, SessionData } from "@/lib/store";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
 
 function indexKey(userId: string) { return `user:history:${userId}`; }
 function sessionKey(userId: string, sessionId: string) { return `user:session:${userId}:${sessionId}`; }

@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getTotalCount } from "@/lib/flashcard-store";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-  }
-  return redisClient;
-}
 
 export async function GET(req: NextRequest) {
   const auth = getAuthUser(req);

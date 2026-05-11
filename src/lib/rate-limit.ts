@@ -5,23 +5,8 @@
  * 当 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 未配置时自动降级为无限制。
  */
 
+import { getRedis } from "@/lib/redis";
 import { TIER_LIMITS, QUOTA_WINDOW_HOURS } from "./constants";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis(): Promise<typeof redisClient> {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
 
 function getDateKey(): string {
   const d = new Date();

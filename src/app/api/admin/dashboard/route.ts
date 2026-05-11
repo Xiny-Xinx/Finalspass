@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-  }
-  return redisClient;
-}
 
 export async function GET(req: NextRequest) {
   const auth = getAuthUser(req);
@@ -34,6 +26,7 @@ export async function GET(req: NextRequest) {
   let proUsers = 0;
   let premiumUsers = 0;
   let todayApiCalls = 0;
+  let pendingPayments = 0;
 
   try {
     // 用 SCAN 扫描 user:id 模式来统计用户
@@ -72,12 +65,16 @@ export async function GET(req: NextRequest) {
     }
   } catch {}
 
+  // 待确认支付数量
+  try { pendingPayments = await redis.scard("payment_pending_ids"); } catch {}
+
   return NextResponse.json({
     totalUsers,
     proUsers,
     premiumUsers,
     freeUsers: totalUsers - proUsers - premiumUsers,
     todayApiCalls,
+    pendingPayments,
     dateKey: new Date().toISOString().slice(0, 10),
   });
 }

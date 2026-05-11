@@ -3,24 +3,9 @@ import { getQuota, getClientIP } from "@/lib/rate-limit";
 import { getAuthUser } from "@/lib/quota-guard";
 import { getUserById, checkTierExpiry } from "@/lib/user-store";
 import { GUEST_RPM_LIMIT, USER_RPM_LIMIT, TIER_LIMITS } from "@/lib/constants";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
 
 export async function GET(req: Request) {
   try {

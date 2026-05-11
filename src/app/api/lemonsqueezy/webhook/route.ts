@@ -16,22 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhook } from "@/lib/lemonsqueezy";
 import { getOrder, markOrderSuccess } from "@/lib/order-store";
 import { setUserTier } from "@/lib/user-store";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
+import { getRedis } from "@/lib/redis";
 
 interface LsWebhookEvent {
   meta: {

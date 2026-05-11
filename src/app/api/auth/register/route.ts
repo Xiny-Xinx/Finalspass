@@ -4,22 +4,7 @@ import { signJWT, serializeCookie } from "@/lib/auth";
 import { createUser } from "@/lib/user-store";
 import { checkAuthRateLimit, resetAuthRateLimit } from "@/lib/rate-limiter";
 import { getClientIP } from "@/lib/rate-limit";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
+import { getRedis } from "@/lib/redis";
 
 const schema = z.object({
   email: z.string().email("请输入有效的邮箱地址"),

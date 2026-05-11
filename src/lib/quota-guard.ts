@@ -15,6 +15,7 @@ import { verifyJWT, JwtPayload } from "./auth";
 import { getUserById } from "./user-store";
 import { checkTokenBudget, recordTokens, getClientIP } from "./rate-limit";
 import { checkGuestRateLimit, checkUserRateLimit } from "./rate-limiter";
+import { getRedis } from "@/lib/redis";
 import {
   MODEL_QUOTA_COST,
   GUEST_RPM_LIMIT,
@@ -37,25 +38,6 @@ export function getAuthUser(req: Request): JwtPayload | null {
   return verifyJWT(match[1]);
 }
 
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
-
-/**
- * 检查已登录用户每日配额上限
- */
 async function getUserDailyCap(userId: string): Promise<number> {
   try {
     const user = await getUserById(userId);

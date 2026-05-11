@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/quota-guard";
+import { getRedis } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
-
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const { Redis } = await import("@upstash/redis");
-    redisClient = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-  }
-  return redisClient;
-}
 
 async function isAdmin(userId: string): Promise<boolean> {
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -50,6 +42,18 @@ export async function POST(req: NextRequest) {
   user.tier = targetTier;
   user.tierExpiresAt = new Date(Date.now() + grantDays * 86400000).toISOString();
   user.verified = true;
+
+  // days=0 仅为查询用户信息，不实际修改
+  if (days === 0) {
+    return NextResponse.json({
+      email: user.email,
+      username: user.username,
+      tier: user.tier,
+      verified: user.verified,
+      tierExpiresAt: user.tierExpiresAt,
+      createdAt: user.createdAt,
+    });
+  }
 
   await redis.set(`user:${userId}`, JSON.stringify(user));
   return NextResponse.json({ success: true, email, tier: targetTier, days: grantDays });

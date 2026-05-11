@@ -7,21 +7,7 @@
  *   support:users            → Set of userIds（有历史消息的用户索引）
  */
 
-let redisClient: import("@upstash/redis").Redis | null = null;
-async function getRedis() {
-  if (!redisClient && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    try {
-      const { Redis } = await import("@upstash/redis");
-      redisClient = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      });
-    } catch {
-      return null;
-    }
-  }
-  return redisClient;
-}
+import { getRedis } from "@/lib/redis";
 
 export interface SupportMessage {
   role: "user" | "assistant" | "admin";
