@@ -79,25 +79,26 @@ export async function POST(req: NextRequest) {
 
     // 检查是否有管理员未读回复
     const unread = await getUnread(userId);
-    if (unread > 0) {
+    const hasUnread = unread > 0;
+    if (hasUnread) {
       await setUnread(userId, 0);
-      return NextResponse.json({ reply: null, unread: true });
     }
 
-    // FAQ 自动匹配
-    const answer = findAnswer(question);
+    // FAQ 自动匹配（有未读时不自动回复，让用户看管理员回复）
+    const answer = !hasUnread ? findAnswer(question) : null;
 
     if (answer) {
       // 有匹配的 FAQ 答案
       await addMessage(userId, { role: "assistant", content: answer });
-      return NextResponse.json({ reply: answer });
+    } else {
+      // 没有匹配或用户有未读 → 转人工
+      if (!hasUnread) {
+        const transferMsg = "暂未找到匹配的答案，已为您转接人工客服。您的问题已提交，管理员会尽快回复。";
+        await addMessage(userId, { role: "assistant", content: transferMsg });
+      }
     }
 
-    // 没有匹配 → 转人工
-    const transferMsg = "暂未找到匹配的答案，已为您转接人工客服。您的问题已提交，管理员会尽快回复。";
-    await addMessage(userId, { role: "assistant", content: transferMsg });
-
-    // 邮件通知管理员（await 确保 Vercel serverless 不截断请求）
+    // 无论是否 FAQ 匹配，都邮件通知管理员有新消息
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
       const user = await getUserById(userId);
@@ -127,7 +128,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ reply: null, transfer: true });
+    return NextResponse.json({
+      reply: answer ?? null,
+      unread: hasUnread ? true : undefined,
+      transfer: !hasUnread && !answer ? true : undefined,
+    });
   } catch (err) {
     console.error("[support] 处理失败:", err);
     return NextResponse.json({ error: "客服系统暂不可用" }, { status: 500 });
