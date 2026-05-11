@@ -97,15 +97,16 @@ export async function POST(req: NextRequest) {
     const transferMsg = "暂未找到匹配的答案，已为您转接人工客服。您的问题已提交，管理员会尽快回复。";
     await addMessage(userId, { role: "assistant", content: transferMsg });
 
-    // 邮件通知管理员（异步执行，不阻塞响应）
+    // 邮件通知管理员（await 确保 Vercel serverless 不截断请求）
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
       const user = await getUserById(userId);
       if (user) {
-        sendEmail({
-          to: adminEmail,
-          subject: `💬 客服新消息 - ${user.email}`,
-          html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        try {
+          await sendEmail({
+            to: adminEmail,
+            subject: `💬 客服新消息 - ${user.email}`,
+            html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
   <h2 style="color:#2563eb">客服新消息通知</h2>
   <table style="width:100%;border-collapse:collapse">
     <tr><td style="padding:6px 0;color:#666">用户</td><td><strong>${user.email}</strong>${user.username ? ` (${user.username})` : ""}</td></tr>
@@ -118,7 +119,11 @@ export async function POST(req: NextRequest) {
   </div>
   <a href="https://finalspass.top/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台回复 →</a>
 </div>`,
-        }).catch((err) => console.error("[support] 邮件通知失败:", err));
+          });
+          console.log("[support] 邮件通知成功");
+        } catch (err) {
+          console.error("[support] 邮件通知失败:", err);
+        }
       }
     }
 

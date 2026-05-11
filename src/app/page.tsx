@@ -1463,6 +1463,16 @@ export default function Page() {
                     条款
                   </a>
                   <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
+                  <a
+                    href="/changelog"
+                    onClick={() => setMenuOpen(false)}
+                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    更新
+                  </a>
+                  <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
                   {isAdmin && (
                   <>
                     <a href="/admin" onClick={() => setMenuOpen(false)}

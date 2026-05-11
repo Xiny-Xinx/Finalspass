@@ -72,14 +72,15 @@ export async function POST(req: NextRequest) {
     await redis.set(pendingId, JSON.stringify(pending));
     await redis.sadd("payment_pending_ids", pendingId);
 
-    // 邮件通知管理员
+    // 邮件通知管理员（await 确保 Vercel serverless 不截断请求）
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
       const amountStr = `¥${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
-      sendEmail({
-        to: adminEmail,
-        subject: `💰 支付确认 - ${email} - ${amountStr}`,
-        html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+      try {
+        await sendEmail({
+          to: adminEmail,
+          subject: `💰 支付确认 - ${email} - ${amountStr}`,
+          html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
   <h2 style="color:#2563eb">新支付确认</h2>
   <table style="width:100%;border-collapse:collapse">
     <tr><td style="padding:6px 0;color:#666">用户</td><td><strong>${email}</strong></td></tr>
@@ -91,7 +92,11 @@ export async function POST(req: NextRequest) {
   <p style="color:#666;font-size:0.85rem;margin:16px 0">请核对支付宝收款记录中的手机号和金额，确认无误后前往后台激活。</p>
   <a href="https://finalspass.top/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台激活 →</a>
 </div>`,
-      }).catch((err) => console.error("[payment-confirm] 邮件通知失败:", err));
+        });
+        console.log("[payment-confirm] 邮件通知成功");
+      } catch (err) {
+        console.error("[payment-confirm] 邮件通知失败:", err);
+      }
     }
 
     return NextResponse.json({ success: true, message: "提交成功，请等待管理员确认" });

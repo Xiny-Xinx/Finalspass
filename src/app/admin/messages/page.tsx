@@ -38,6 +38,66 @@ export default function AdminMessagesPage() {
   const [extraMsg, setExtraMsg] = useState("");
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
 
+  // ── 更新日志管理 ──
+  interface ChangelogEntry {
+    id: string;
+    date: string;
+    title: string;
+    changes: string[];
+    createdAt: number;
+  }
+  const [clEntries, setClEntries] = useState<ChangelogEntry[]>([]);
+  const [clDate, setClDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [clTitle, setClTitle] = useState("");
+  const [clChanges, setClChanges] = useState("");
+  const [clMsg, setClMsg] = useState("");
+  const [clAdding, setClAdding] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/changelog")
+      .then((r) => r.json())
+      .then((data) => setClEntries(data.entries ?? []))
+      .catch(() => {});
+  }, []);
+
+  async function handleClAdd() {
+    if (!clTitle.trim() || !clChanges.trim()) return;
+    setClAdding(true); setClMsg("");
+    const changes = clChanges.split("\n").map((s) => s.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/admin/changelog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add", date: clDate, title: clTitle.trim(), changes }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClEntries((prev) => [data.entry, ...prev]);
+        setClTitle("");
+        setClChanges("");
+        setClDate(new Date().toISOString().slice(0, 10));
+        setClMsg("✅ 已添加");
+      } else {
+        setClMsg(`❌ ${data.error}`);
+      }
+    } catch {
+      setClMsg("❌ 网络错误");
+    }
+    setClAdding(false);
+    setTimeout(() => setClMsg(""), 3000);
+  }
+
+  async function handleClDelete(id: string) {
+    try {
+      await fetch("/api/admin/changelog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id }),
+      });
+      setClEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch {}
+  }
+
   useEffect(() => {
     fetch("/api/announcement").then((r) => r.json()).then((d) => { if (d.text) setAnnounceText(d.text); }).catch(() => {});
   }, []);
@@ -244,6 +304,58 @@ export default function AdminMessagesPage() {
           ))}
         </div>
       )}
+
+      {/* ── 更新日志管理 ── */}
+      <div style={{ borderBottom: "1px solid var(--border)", background: "rgba(99,102,241,0.03)" }}>
+        <div style={{ padding: "8px 20px", fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6 }}>
+          📋 更新日志管理
+        </div>
+        <div style={{ padding: "10px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input type="date" value={clDate} onChange={(e) => setClDate(e.target.value)}
+              style={{ width: 140, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+            <input value={clTitle} onChange={(e) => setClTitle(e.target.value)} placeholder="标题（如：知识点提取优化）"
+              style={{ flex: 1, minWidth: 200, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none" }} />
+          </div>
+          <textarea value={clChanges} onChange={(e) => setClChanges(e.target.value)} placeholder="每行一条变更内容&#10;例如：&#10;优化知识提取提示词，减少遗漏&#10;修复注册频率限制过严问题"
+            rows={3} style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input-bg)", color: "var(--ink)", fontSize: "0.82rem", outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={handleClAdd} disabled={clAdding || !clTitle.trim() || !clChanges.trim()}
+              style={{ background: clAdding || !clTitle.trim() || !clChanges.trim() ? "var(--border)" : "#6366f1", color: "white", border: "none", borderRadius: 6, padding: "6px 16px", fontSize: "0.78rem", cursor: clAdding || !clTitle.trim() || !clChanges.trim() ? "not-allowed" : "pointer", fontWeight: 500, opacity: clAdding || !clTitle.trim() || !clChanges.trim() ? 0.6 : 1 }}>
+              {clAdding ? "添加中…" : "发布更新"}
+            </button>
+            {clMsg && <span style={{ fontSize: "0.72rem", color: clMsg.startsWith("✅") ? "var(--success)" : "var(--danger)" }}>{clMsg}</span>}
+          </div>
+          {clEntries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+              {clEntries.slice(0, 10).map((e) => (
+                <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 8px", borderRadius: 6, background: "var(--accent-subtle)" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontFamily: "monospace" }}>{e.date}</div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)", marginTop: 1 }}>{e.title}</div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: 2, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {e.changes.slice(0, 3).map((c, i) => (
+                        <span key={i} style={{ background: "var(--paper2)", padding: "1px 6px", borderRadius: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 200 }}>{c}</span>
+                      ))}
+                      {e.changes.length > 3 && <span style={{ opacity: 0.6 }}>+{e.changes.length - 3}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => handleClDelete(e.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "0.75rem", padding: "2px 4px", opacity: 0.5, flexShrink: 0 }}
+                    onMouseEnter={(ee) => { ee.currentTarget.style.opacity = "1"; ee.currentTarget.style.color = "var(--danger)"; }}
+                    onMouseLeave={(ee) => { ee.currentTarget.style.opacity = "0.5"; ee.currentTarget.style.color = "var(--muted)"; }}
+                    title="删除">✕</button>
+                </div>
+              ))}
+              {clEntries.length > 10 && (
+                <a href="/changelog" target="_blank" style={{ fontSize: "0.72rem", color: "var(--accent)", textDecoration: "none", padding: "4px 8px" }}>
+                  查看全部 {clEntries.length} 条 →
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* 客户列表 */}
