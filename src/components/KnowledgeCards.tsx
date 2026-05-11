@@ -30,7 +30,7 @@ export default function KnowledgeCards({
   }, [exportOpen]);
 
   // 导出
-  const doExport = (format: "md" | "txt" | "json") => {
+  const doExport = (format: "md" | "txt" | "json" | "pdf") => {
     setExportOpen(false);
     const date = new Date().toISOString().slice(0, 10);
     const cardLines = cards.map((c, i) => `## ${i + 1}. ${c.title}\n\n${c.summary}\n\n---\n`).join("\n");
@@ -47,10 +47,49 @@ export default function KnowledgeCards({
       content = cards.map((c, i) => `${i + 1}. ${c.title}\n${c.summary}\n`).join("\n---\n\n");
       mime = "text/plain";
       ext = "txt";
-    } else {
+    } else if (format === "json") {
       content = JSON.stringify({ exportDate: date, total: cards.length, cards }, null, 2);
       mime = "application/json";
       ext = "json";
+    } else {
+      // pdf: 生成自包含的 HTML 文档，用户可用浏览器打印为 PDF
+      const cardsHtml = cards
+        .map(
+          (c, i) => `
+        <div class="card">
+          <div class="card-num">NO.${String(i + 1).padStart(2, "0")}</div>
+          <div class="card-title">${c.title}</div>
+          <div class="card-summary">${c.summary}</div>
+        </div>`
+        )
+        .join("\n");
+      content = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识卡片</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Noto Serif SC", Georgia, "PingFang SC", "Microsoft YaHei", serif; padding: 40px; color: #1a1a2e; background: #fff; }
+  h1 { font-size: 1.6rem; margin-bottom: 6px; }
+  .meta { font-size: 0.75rem; color: #888; margin-bottom: 28px; }
+  .card { break-inside: avoid; page-break-inside: avoid; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #e8e8e8; }
+  .card:last-child { border-bottom: none; }
+  .card-num { font-family: monospace; font-size: 0.65rem; color: #999; margin-bottom: 6px; }
+  .card-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; line-height: 1.5; }
+  .card-summary { font-size: 0.85rem; color: #555; line-height: 1.7; }
+  @media print { body { padding: 20px; } .card { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<h1>知识点汇总</h1>
+<div class="meta">共 ${cards.length} 个知识点 · 导出日期 ${date}</div>
+${cardsHtml}
+</body>
+</html>`;
+      mime = "text/html";
+      ext = "html";
     }
 
     const blob = new Blob([content], { type: mime });
@@ -192,6 +231,7 @@ export default function KnowledgeCards({
                 { key: "md" as const, icon: "📝", label: "Markdown", desc: "适用于 Obsidian / Notion" },
                 { key: "txt" as const, icon: "📄", label: "纯文本", desc: "简洁文本，适合打印" },
                 { key: "json" as const, icon: "📦", label: "JSON", desc: "完整数据结构，可备份" },
+                { key: "pdf" as const, icon: "🖨️", label: "导出 PDF", desc: "生成 HTML，可打印为 PDF" },
               ].map((opt) => (
                 <button
                   key={opt.key}

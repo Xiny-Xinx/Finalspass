@@ -31,7 +31,10 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const [showResults, setShowResults] = useState(false);
   const [reviewWrong, setReviewWrong] = useState(false);
   const [shuffledOptions, setShuffledOptions] = useState<string[][]>([]);
+  const [history, setHistory] = useState<{ timestamp: number; score: number; total: number; type: string }[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const restoredRef = useRef(false);
+  const savedRef = useRef(false);
 
   // Restore quiz state
   useEffect(() => {
@@ -52,6 +55,14 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
     if (!fileName || questions.length === 0) return;
     saveQuizState(fileName, { type, count, questions, answers });
   }, [fileName, type, count, questions, answers]);
+
+  // 加载测验历史
+  useEffect(() => {
+    fetch("/api/quiz/history")
+      .then((r) => r.json())
+      .then((d) => { if (d.history) setHistory(d.history); })
+      .catch(() => {});
+  }, []);
 
   function getOptions(qi: number): string[] {
     return shuffledOptions[qi] || questions[qi]?.options || [];
@@ -95,6 +106,23 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
   const wrongIndices = questions.map((_, i) => i).filter((i) => answers[i] !== undefined && !isCorrect(questions[i], answers[i]));
   const pct = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
 
+  // 提交时保存测验结果
+  useEffect(() => {
+    if (showResults && !savedRef.current && questions.length > 0) {
+      savedRef.current = true;
+      fetch("/api/quiz/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score: correct, total: questions.length, fileName, type }),
+      }).then((r) => r.json()).then((d) => {
+        if (d.success) {
+          setHistory((prev) => [{ timestamp: Date.now(), score: correct, total: questions.length, type }, ...prev]);
+        }
+      }).catch(() => {});
+    }
+    if (!showResults) savedRef.current = false;
+  }, [showResults, correct, questions.length, fileName, type]);
+
   const selectStyle: React.CSSProperties = {
     border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "6px 10px",
     fontSize: "0.8rem", background: "var(--card)", color: "var(--ink)", cursor: "pointer",
@@ -129,11 +157,34 @@ export default function QuizTab({ pptContent, fileName, model }: QuizTabProps) {
           </div>
         )}
 
+        {history.length > 0 && (
+          <button onClick={() => setShowHistory(!showHistory)}
+            style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", fontSize: "0.72rem", fontFamily: "monospace", cursor: "pointer", color: "var(--muted)" }}>
+            📊 {showHistory ? "关闭" : "历史"}
+          </button>
+        )}
         <button onClick={() => generate()} disabled={loading || !pptContent.trim()}
           style={{ marginLeft: "auto", background: loading ? "var(--muted)" : "var(--accent)", color: "white", border: "none", padding: "10px 20px", borderRadius: 5, cursor: loading ? "not-allowed" : "pointer", fontSize: "0.79rem", transition: "background .2s" }}>
           {loading ? "⏳ 生成中…" : questions.length > 0 ? "↻ 重来" : "✨ 出题"}
         </button>
       </div>
+
+      {/* 测验历史 */}
+      {showHistory && history.length > 0 && (
+        <div style={{ marginBottom: 24, padding: "14px 16px", background: "var(--paper2)", borderRadius: 10, border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "0.72rem", fontFamily: "monospace", color: "var(--muted)", marginBottom: 8 }}>📊 测验历史</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {history.slice(0, 10).map((h, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", padding: "4px 0", borderBottom: i < Math.min(history.length, 10) - 1 ? "1px solid var(--border)" : "none" }}>
+                <span style={{ color: "var(--ink)" }}>{h.score}/{h.total} ({Math.round(h.score / h.total * 100)}%)</span>
+                <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>
+                  {new Date(h.timestamp).toLocaleDateString("zh-CN")} · {h.type === "mixed" ? "混合" : h.type === "choice" ? "单选" : "判断"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {reviewWrong && (
         <div style={{ fontSize: "0.82rem", color: "var(--accent)", marginBottom: 16 }}>
