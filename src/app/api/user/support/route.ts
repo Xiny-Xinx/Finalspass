@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthUser } from "@/lib/quota-guard";
 import { addMessage, getUnread, setUnread } from "@/lib/support-store";
+import { getUserById } from "@/lib/user-store";
+import { sendEmail } from "@/lib/email";
 
 const schema = z.object({
   question: z.string().min(1, "问题不能为空"),
@@ -94,6 +96,32 @@ export async function POST(req: NextRequest) {
     // 没有匹配 → 转人工
     const transferMsg = "暂未找到匹配的答案，已为您转接人工客服。您的问题已提交，管理员会尽快回复。";
     await addMessage(userId, { role: "assistant", content: transferMsg });
+
+    // 邮件通知管理员（异步执行，不阻塞响应）
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      const user = await getUserById(userId);
+      if (user) {
+        sendEmail({
+          to: adminEmail,
+          subject: `💬 客服新消息 - ${user.email}`,
+          html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+  <h2 style="color:#2563eb">客服新消息通知</h2>
+  <table style="width:100%;border-collapse:collapse">
+    <tr><td style="padding:6px 0;color:#666">用户</td><td><strong>${user.email}</strong>${user.username ? ` (${user.username})` : ""}</td></tr>
+    <tr><td style="padding:6px 0;color:#666">套餐</td><td><strong>${user.tier}</strong></td></tr>
+    <tr><td style="padding:6px 0;color:#666">时间</td><td>${new Date().toLocaleString("zh-CN")}</td></tr>
+  </table>
+  <div style="margin:16px 0;padding:12px;background:#f5f5f5;border-radius:8px">
+    <div style="font-size:0.82rem;color:#666;margin-bottom:4px">用户消息：</div>
+    <div style="font-size:0.95rem;white-space:pre-wrap">${question}</div>
+  </div>
+  <a href="https://finalspass.top/admin/messages" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:0.85rem">前往后台回复 →</a>
+</div>`,
+        }).catch((err) => console.error("[support] 邮件通知失败:", err));
+      }
+    }
+
     return NextResponse.json({ reply: null, transfer: true });
   } catch (err) {
     console.error("[support] 处理失败:", err);
