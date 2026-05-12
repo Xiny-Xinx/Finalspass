@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
   try {
     const ip = getClientIP(req);
 
-    // 频率限制：同一 IP 每 10 分钟最多注册 2 个账号
-    const rateCheck = await checkAuthRateLimit(ip, 2, 600);
+    // 频率限制：同一 IP 每 30 分钟最多注册 5 个账号
+    const rateCheck = await checkAuthRateLimit(ip, 5, 1800);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: "注册过于频繁，请稍后再试" },
