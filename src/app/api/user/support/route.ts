@@ -15,7 +15,7 @@ const FAQ: { keywords: string[]; answer: string }[] = [
   },
   {
     keywords: ["套餐", "价格", "订阅", "pro", "premium", "免费", "多少钱", "费用", "付费"],
-    answer: "FinalsPass 提供三档套餐：免费版（30次/天）、Pro（A$8.99/月，150次/天）、Premium（A$18.49/月，500次/天）。Pro 和 Premium 可使用全部功能，免费版可用知识卡片和问答。",
+    answer: "FinalsPass 提供三档套餐：免费版（30次/天）、Pro（¥30/月，150次/天）、Premium（¥59/月，500次/天）。Pro 和 Premium 可使用全部功能，免费版可用知识卡片和问答。",
   },
   {
     keywords: ["取消", "退订", "停止", "取消订阅"],
@@ -23,7 +23,7 @@ const FAQ: { keywords: string[]; answer: string }[] = [
   },
   {
     keywords: ["充值", "额外", "配额", "不够", "用完", "额度"],
-    answer: "每日额度用完后，可在账户中心购买额外配额（50次/A$1.99、150次/A$4.99、500次/A$12.99），不限时间，永不过期。",
+    answer: "每日额度用完后，可在账户中心购买额外配额（50次/¥3.99、150次/¥9.99、500次/¥35），不限时间，永不过期。",
   },
   {
     keywords: ["退款", "退钱", "refund"],

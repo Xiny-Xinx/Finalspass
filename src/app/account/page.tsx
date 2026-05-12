@@ -429,7 +429,7 @@ export default function AccountPage() {
                 display: "inline-block", background: "var(--accent)", color: "white",
                 borderRadius: 8, padding: "3px 14px", fontSize: "0.85rem", fontWeight: 700,
               }}>
-                A${pack.priceAUD.toFixed(2)}
+                ¥{Number.isInteger(pack.priceCNY) ? pack.priceCNY : pack.priceCNY.toFixed(2)}
               </div>
             </button>
           );})}
@@ -462,7 +462,7 @@ export default function AccountPage() {
         {/* Pro */}
         <PlanCard
           name="Pro"
-          price="A$8.99"
+          price="¥30"
           priceLabel="/月"
           dailyLimit="150次/天"
           models="全部模型"
@@ -476,7 +476,7 @@ export default function AccountPage() {
         {/* Premium */}
         <PlanCard
           name="Premium"
-          price="A$18.49"
+          price="¥59"
           priceLabel="/月"
           dailyLimit="500次/天"
           models="全部模型"
@@ -633,7 +633,7 @@ export default function AccountPage() {
               {qrModal.label}
             </div>
             <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "var(--accent)", marginBottom: 20 }}>
-              ¥{qrModal.amount.toFixed(2)}
+              ¥{Number.isInteger(qrModal.amount) ? qrModal.amount : qrModal.amount.toFixed(2)}
             </div>
 
             {/* 收款码图片 */}

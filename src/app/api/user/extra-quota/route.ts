@@ -38,10 +38,10 @@ export async function POST(req: NextRequest) {
       success: true,
       qrPayment: true,
       units: pack.units,
-      amount: pack.priceAUD,
-      label: `${pack.label} · ¥${pack.priceAUD.toFixed(2)}`,
+      amount: pack.priceCNY,
+      label: `${pack.label} · ¥${Number.isInteger(pack.priceCNY) ? pack.priceCNY : pack.priceCNY.toFixed(2)}`,
       qrUrl,
-      message: `请使用支付宝扫描下方二维码支付 ¥${pack.priceAUD.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您添加 ${pack.units} 次额外配额。`,
+      message: `请使用支付宝扫描下方二维码支付 ¥${Number.isInteger(pack.priceCNY) ? pack.priceCNY : pack.priceCNY.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您添加 ${pack.units} 次额外配额。`,
     });
   } catch (err) {
     console.error("[extra-quota] 错误:", err);

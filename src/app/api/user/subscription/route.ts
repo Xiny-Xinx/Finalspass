@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
       qrPayment: true,
       tier,
       amount,
-      label: `${TIER_LABEL[tier]} · ¥${amount.toFixed(2)}`,
+      label: `${TIER_LABEL[tier]} · ¥${Number.isInteger(amount) ? amount : amount.toFixed(2)}`,
       qrUrl,
-      message: `请使用支付宝扫描下方二维码支付 ¥${amount.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您激活 ${TIER_LABEL[tier]} 套餐。`,
+      message: `请使用支付宝扫描下方二维码支付 ¥${Number.isInteger(amount) ? amount : amount.toFixed(2)}，付款后联系在线客服告知已付款，管理员将在核实后为您激活 ${TIER_LABEL[tier]} 套餐。`,
     });
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {

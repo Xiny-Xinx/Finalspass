@@ -49,11 +49,11 @@ export const TIER_LIMITS: Record<string, number> = {
   premium: 500,
 };
 
-/** 各套餐的价格（澳元/月） */
+/** 各套餐的价格（人民币/月） */
 export const TIER_PRICES: Record<string, number> = {
   free: 0,
-  pro: 8.99,
-  premium: 18.49,
+  pro: 30,
+  premium: 59,
 };
 
 /** Token 重置窗口(小时)。默认 24 小时，可通过环境变量 QUOTA_WINDOW_HOURS 覆盖 */
@@ -66,10 +66,10 @@ export const GUEST_RPM_LIMIT = Number(process.env.GUEST_RPM_LIMIT) || 10;
 export const USER_RPM_LIMIT = Number(process.env.USER_RPM_LIMIT) || 30;
 
 /** 额外配额购买选项 */
-export const EXTRA_QUOTA_PACKS: { units: number; priceAUD: number; label: string }[] = [
-  { units: 50, priceAUD: 1.99, label: "50 次额外配额" },
-  { units: 150, priceAUD: 4.99, label: "150 次额外配额" },
-  { units: 500, priceAUD: 12.99, label: "500 次额外配额（最值）" },
+export const EXTRA_QUOTA_PACKS: { units: number; priceCNY: number; label: string }[] = [
+  { units: 50, priceCNY: 3.99, label: "50 次额外配额" },
+  { units: 150, priceCNY: 9.99, label: "150 次额外配额" },
+  { units: 500, priceCNY: 35, label: "500 次额外配额（最值）" },
 ];
 
 /** localStorage 键 */
