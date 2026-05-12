@@ -40,24 +40,25 @@ export async function POST(req: NextRequest) {
         : "Output the summary in English.";
 
     const buildPrompt = (instruction: string): string =>
-      `${lang === "zh" ? "你是课堂笔记助手。以下是课件文字内容，请：" : "You are a lecture note assistant. Given the following course material:"}
-1. ${lang === "zh" ? "过滤无关内容（页码、装饰文字、版权信息、重复内容等）" : "Filter out irrelevant content (page numbers, decorative text, copyright info, repetitions, etc.)"}
-2. ${instruction}
-3. ${lang === "zh" ? "每个知识点：标题简短 + 简要说明（10-30字）" : "Each point: a short title + brief description (10-30 words)"}
+      `${lang === "zh"
+        ? "你是课件知识点提取专家。从以下文字中提取所有独立的知识点，输出 JSON 格式的知识卡片。\n\n要求：\n1. 过滤无关内容（页码、页脚装饰、版权声明、导航文字、目录、重复标题等）\n2. 识别每个独立的知识点——定义、公式、定理/定律、重要结论、分类/对比、流程/步骤、关键日期/事件、统计数据、人名/理论\n3. 不同概念必须拆成不同卡片，不要合并到一条\n4. 每个卡片：标题（简洁概括）+ 核心说明（15-50字，讲清要点）"
+        : "You are a course material knowledge extraction expert. Extract ALL distinct knowledge points from the text below as JSON cards.\n\nRequirements:\n1. Filter irrelevant content (page numbers, decorative footers, copyright notices, navigation text, table of contents, repeated headings, etc.)\n2. Identify each distinct knowledge point — definitions, formulas, theorems/laws, key conclusions, comparisons/contrasts, processes/steps, important dates/events, statistics/data, people/theories\n3. Different concepts MUST be separate cards, do NOT merge them\n4. Each card: concise title + core explanation (15-50 words covering the key point)"}
+5. ${instruction}
+6. ${lang === "zh" ? "宁可多提取也不要遗漏。拿不准的内容也作为知识点提取。" : "Better to over-extract than miss something. If unsure, still extract it as a knowledge point."}
 
-${lang === "zh" ? "严格返回以下 JSON，不要有任何其他文字：" : "Return strictly the following JSON with no other text:"}
-{"cards":[{"title":"${lang === "zh" ? "知识点标题" : "Point title"}","summary":"${lang === "zh" ? "简要说明" : "Brief description"}"}]}
+${lang === "zh" ? "严格按照以下 JSON 格式返回，不要有任何其他文字：" : "Return strictly the following JSON format with no other text:"}
+{"cards":[{"title":"${lang === "zh" ? "知识点标题" : "Point title"}","summary":"${lang === "zh" ? "核心说明（15-50字）" : "Core explanation (15-50 words)"}"}]}
 
 ${langInstruction}
 
 ${lang === "zh" ? "课件内容：" : "Course material:"}
 ${content.slice(0, MAX_EXTRACT_CHARS)}`;
 
-    // 第一次：尽量提炼
+    // 第一次：系统性提取
     const prompt1 = buildPrompt(
       lang === "zh"
-        ? "尽可能从文字中提炼知识点，即使内容不完整、格式混乱也要尽力提取，每个知识点用一句话概括"
-        : "Extract every possible knowledge point. If the text is incomplete or messy, still extract whatever you can. Summarize each point in one sentence."
+        ? "通读全文，系统性地提取所有知识点。先扫描一遍全文识别所有主题，再逐个输出。按照课件内容出现的顺序排列卡片。"
+        : "Read through the entire content systematically. First scan the full text to identify all topics, then output each one one by one. Order the cards by the sequence they appear in the material."
     );
     let { text: raw, usage } = await chat(prompt1, { model: model as ModelId });
     let parsed = parseJsonFromLLM(raw);
@@ -67,8 +68,8 @@ ${content.slice(0, MAX_EXTRACT_CHARS)}`;
     if (data.cards.length === 0) {
       const prompt2 = buildPrompt(
         lang === "zh"
-          ? "请直接从以下文字中提取关键信息，每一条信息都算一个知识点，不要遗漏任何内容"
-          : "Extract ALL key information from the text below. Every piece of information counts as a knowledge point. Do not skip anything."
+          ? "请重新仔细分析。每一句承载了独立信息的话都应该作为一个知识点输出，不要遗漏任何内容。特别留意：小标题、列表项、定义句、结论句、标注或强调内容。"
+          : "Re-analyze carefully. Every sentence carrying distinct information should be a knowledge point. Pay special attention to: subheadings, list items, definitions, conclusions, highlighted or emphasized content."
       );
       const retry = await chat(prompt2, { model: model as ModelId });
       raw = retry.text;

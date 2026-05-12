@@ -33,15 +33,19 @@ async function callDeepSeekVision(
   const content: any[] = [
     {
       type: "text",
-      text: `You are a lecture note assistant. I will give you images of course slides/pages. Please:
-1. Extract ALL text and information visible in each image
-2. Identify the key knowledge points, definitions, formulas, theorems, and important concepts
-3. Return the knowledge points as JSON cards
+      text: `You are a course material analysis expert. I will give you images of slides or pages. Please:
+
+1. Extract ALL visible text and information from each image
+2. Identify every distinct knowledge point: definitions, formulas, theorems/laws, key conclusions, comparisons/contrasts, processes/steps, important dates/events, data/statistics, people/theories
+3. Different concepts MUST be separate cards — do NOT merge them
+4. Each card: concise title + core explanation (15-50 words)
+5. Extract as many as you can. Better to over-extract than miss something.
+6. Order cards by the sequence they appear in the slides
 
 Return strictly the following JSON with no other text:
-{"cards":[{"title":"Point title","summary":"Brief description"}]}
+{"cards":[{"title":"Point title","summary":"Core explanation (15-50 words)"}]}
 
-Output in the same language as the content (Chinese or English).`,
+Output in the same language as the slide content (Chinese or English).`,
     },
   ];
 

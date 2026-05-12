@@ -361,7 +361,7 @@ export default function Page() {
 
     let allText = "";
     let allCards: Card[] = [];
-    const CHUNK_SIZE = 4000;
+    const CHUNK_SIZE = 8000;
 
     try {
       for (let i = 0; i < files.length; i++) {
@@ -397,8 +397,9 @@ export default function Page() {
           }
 
           // 文字分块处理 + AI 提炼
+          const OVERLAP = 200;
           const chunks: string[] = [];
-          for (let j = 0; j < extractedText.length; j += CHUNK_SIZE) {
+          for (let j = 0; j < extractedText.length; j += CHUNK_SIZE - OVERLAP) {
             chunks.push(extractedText.slice(j, j + CHUNK_SIZE));
           }
 
@@ -437,7 +438,20 @@ export default function Page() {
 
       const truncated = allText.slice(0, MAX_EXTRACT_CHARS * 2);
 
-      setCards(allCards);
+      // 去重：合并重叠区域产生的相似卡片
+      const seen = new Set<string>();
+      const deduped: Card[] = [];
+      for (const card of allCards) {
+        const exactKey = `${card.title}|${card.summary}`;
+        if (seen.has(exactKey)) continue;
+        // 标题相同的卡片视为同一知识点（保留首次出现的版本）
+        const titleExists = deduped.some((e) => e.title === card.title);
+        if (titleExists) continue;
+        seen.add(exactKey);
+        deduped.push(card);
+      }
+
+      setCards(deduped);
       setPptContent(truncated);
       setTab("cards");
       setStage("results");
