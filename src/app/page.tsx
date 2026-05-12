@@ -1462,17 +1462,6 @@ export default function Page() {
                   >
                     条款
                   </a>
-                  <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
-                  <a
-                    href="/changelog"
-                    onClick={() => setMenuOpen(false)}
-                    style={{ fontSize: "0.68rem", color: "var(--muted)", textDecoration: "none", padding: "4px 6px", borderRadius: 4, opacity: 0.6 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; }}
-                  >
-                    更新
-                  </a>
-                  <span style={{ fontSize: "0.68rem", color: "var(--sidebar-border)" }}>·</span>
                   {isAdmin && (
                   <>
                     <a href="/admin" onClick={() => setMenuOpen(false)}
@@ -1728,6 +1717,45 @@ export default function Page() {
           </form>
         </div>
       )}
+
+      {/* 更新日志入口（右下角浮动，客服按钮上方） */}
+      <a
+        href="/changelog"
+        style={{
+          position: "fixed",
+          bottom: 78,
+          right: 24,
+          zIndex: 599,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          background: "var(--paper)",
+          border: "1px solid var(--border)",
+          borderRadius: 20,
+          padding: "6px 12px 6px 10px",
+          fontSize: "0.72rem",
+          fontFamily: "monospace",
+          color: "var(--muted)",
+          textDecoration: "none",
+          boxShadow: "0 2px 12px rgba(0,0,0,.08)",
+          cursor: "pointer",
+          opacity: 0.8,
+          transition: "opacity .2s, transform .15s, box-shadow .2s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = "1";
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.12)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "0.8";
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.08)";
+        }}
+      >
+        <span style={{ fontSize: "0.8rem", lineHeight: 1, opacity: 0.8 }}>📋</span>
+        更新日志
+      </a>
 
       {/* 客服浮动按钮（仅在不显示窗口时） - 未登录不显示 */}
       {!supportOpen && isLoggedIn && (
