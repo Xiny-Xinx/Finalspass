@@ -22,14 +22,16 @@ const responseSchema = z.object({
   cards: z.array(cardSchema),
 });
 
-const apiKey = process.env.DEEPSEEK_API_KEY;
-
-async function callDeepSeekVision(
+/**
+ * 调用 Anthropic Claude API 处理视觉提取（Claude 原生支持图片分析）
+ */
+async function callClaudeVision(
   images: string[],
-  model: string
 ): Promise<string> {
-  if (!apiKey) throw new Error("DEEPSEEK_API_KEY 未配置");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY 未配置——视觉提取需要配置 Claude");
 
+  // 构建 content 块：文字说明 + 图片
   const content: any[] = [
     {
       type: "text",
@@ -50,20 +52,24 @@ Output in the same language as the slide content (Chinese or English).`,
   ];
 
   for (const img of images) {
+    // img 格式: data:image/jpeg;base64,xxxx
+    const match = img.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) continue;
     content.push({
-      type: "image_url",
-      image_url: { url: img, detail: "high" },
+      type: "image",
+      source: { type: "base64", media_type: match[1], data: match[2] },
     });
   }
 
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model,
+      model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       messages: [{ role: "user", content }],
     }),
@@ -71,18 +77,22 @@ Output in the same language as the slide content (Chinese or English).`,
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(`DeepSeek API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
+    throw new Error(`Claude API 请求失败 (HTTP ${res.status}): ${err.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() ?? "";
+  return (data.content ?? [])
+    .filter((block: { type: string }) => block.type === "text")
+    .map((block: { text: string }) => block.text)
+    .join("")
+    .trim();
 }
 
 export async function POST(req: NextRequest) {
   try {
     const guard = await withQuota(req);
     const body = await req.json();
-    const { images, model } = requestSchema.parse(body);
+    const { images } = requestSchema.parse(body);
 
     // 多页 PDF 分批处理，每批最多 3 页（减少超时和 token 消耗）
     const BATCH_SIZE = 3;
@@ -90,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < images.length; i += BATCH_SIZE) {
       const batch = images.slice(i, i + BATCH_SIZE);
-      const raw = await callDeepSeekVision(batch, model);
+      const raw = await callClaudeVision(batch);
       const parsed = parseJsonFromLLM(raw);
       const data = responseSchema.parse(parsed);
       allCards.push(...data.cards);
@@ -98,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     // AI 调用成功后扣除配额（按批次数扣）
     const batches = Math.ceil(images.length / BATCH_SIZE);
-    await guard.deduct(EXTRACT_QUOTA_COST * batches, model);
+    await guard.deduct(EXTRACT_QUOTA_COST * batches);
 
     return NextResponse.json({ cards: allCards });
   } catch (error: unknown) {
