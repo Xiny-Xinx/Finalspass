@@ -37,15 +37,21 @@ async function callClaudeVision(
       type: "text",
       text: `You are a course material analysis expert. I will give you images of slides or pages. Please:
 
-1. Extract ALL visible text and information from each image
-2. Identify every distinct knowledge point: definitions, formulas, theorems/laws, key conclusions, comparisons/contrasts, processes/steps, important dates/events, data/statistics, people/theories
-3. Different concepts MUST be separate cards — do NOT merge them
-4. Each card: concise title + core explanation (15-50 words)
-5. Extract as many as you can. Better to over-extract than miss something.
-6. Order cards by the sequence they appear in the slides
+1. Identify the CORE knowledge points only: definitions, formulas, theorems/laws, key conclusions, important processes
+2. Use judgment: distinguish 'core knowledge' from 'supporting content'. Only extract core knowledge.
+3. Do NOT extract:
+   - Examples or illustrations
+   - Tangential or secondary mentions
+   - Detailed elaboration or extra explanation (keep only the core conclusion)
+   - Repeated or rephrased statements of the same idea
+4. If something is just an example or a passing comment, skip it
+5. Different concepts MUST be separate cards
+6. Each card: concise title + core explanation (15-40 words, key point only)
+7. Order cards by the sequence they appear in the slides
+8. Quality over quantity: 3 well-chosen cards are better than 15 trivial ones
 
 Return strictly the following JSON with no other text:
-{"cards":[{"title":"Point title","summary":"Core explanation (15-50 words)"}]}
+{"cards":[{"title":"Point title","summary":"Core explanation (15-40 words)"}]}
 
 Output in the same language as the slide content (Chinese or English).`,
     },
